@@ -5,7 +5,7 @@ import { cn, toPersianDigits } from "@/lib/utils";
 interface CourseCardProps {
   id: string;
   title: string;
-  thumbnail?: string;
+  thumbnail?: string | null;
   coachName: string;
   coachAvatar?: string;
   lessonsCount: number;

@@ -29,7 +29,7 @@ export function VideoPlayer({ src, poster, onEnded, onProgress }: VideoPlayerPro
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
-  const hideTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
