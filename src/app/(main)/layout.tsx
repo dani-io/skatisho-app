@@ -1,4 +1,5 @@
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { InstallPrompt } from "@/components/layout/install-prompt";
 
 export default function MainLayout({
   children,
@@ -12,6 +13,9 @@ export default function MainLayout({
 
       {/* Bottom Navigation */}
       <BottomNav />
+
+      {/* PWA Install Prompt */}
+      <InstallPrompt />
     </div>
   );
 }

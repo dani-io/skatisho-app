@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { ServiceWorkerRegister } from "@/components/layout/sw-register";
 
 export const metadata: Metadata = {
   title: "اسکیتی‌شو | دستیار تمرین اسکیت",
@@ -28,7 +29,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fa" dir="rtl" className="h-full">
-      <body className="h-full font-sans antialiased">{children}</body>
+      <body className="h-full font-sans antialiased">
+        {children}
+        <ServiceWorkerRegister />
+      </body>
     </html>
   );
 }
