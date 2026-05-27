@@ -1,0 +1,49 @@
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: skatisho
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-skatisho_dev_2024}
+      POSTGRES_DB: skatisho
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Next.js App (production)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://skatisho:${DB_PASSWORD:-skatisho_dev_2024}@db:5432/skatisho
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-change-me-in-production}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      SMS_API_KEY: ${SMS_API_KEY}
+      ZARINPAL_MERCHANT: ${ZARINPAL_MERCHANT}
+    depends_on:
+      - db
+
+  # Nginx Reverse Proxy (production)
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - ./media:/var/www/media:ro
+    depends_on:
+      - app
+    profiles:
+      - production
+
+volumes:
+  postgres_data:

@@ -1,0 +1,223 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== USERS ====================
+
+model User {
+  id            String    @id @default(cuid())
+  phone         String    @unique
+  name          String?
+  avatar        String?
+  skillLevel    SkillLevel?
+  goal          String?
+  password      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  subscription  Subscription?
+  progress      LessonProgress[]
+  favorites     Favorite[]
+  tickets       Ticket[]
+  payments      Payment[]
+  walletBalance Int       @default(0)
+  referralCode  String    @unique @default(cuid())
+  referredBy    String?
+
+  @@map("users")
+}
+
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+// ==================== COURSES ====================
+
+model Course {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  thumbnail   String?
+  category    CourseCategory
+  level       SkillLevel
+  coachId     String
+  coach       Coach    @relation(fields: [coachId], references: [id])
+  order       Int      @default(0)
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  chapters    Chapter[]
+  favorites   Favorite[]
+
+  @@map("courses")
+}
+
+enum CourseCategory {
+  GENERAL
+  SPEED
+  FREESTYLE
+  SLALOM
+  HOCKEY
+}
+
+model Chapter {
+  id        String   @id @default(cuid())
+  title     String
+  order     Int      @default(0)
+  courseId   String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  lessons   Lesson[]
+
+  @@map("chapters")
+}
+
+model Lesson {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  videoUrl    String
+  duration    Int      @default(0) // seconds
+  thumbnail   String?
+  order       Int      @default(0)
+  isFree      Boolean  @default(false)
+  chapterId   String
+  chapter     Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  progress    LessonProgress[]
+
+  @@map("lessons")
+}
+
+model LessonProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId    String
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  completed   Boolean  @default(false)
+  watchedSec  Int      @default(0)
+  lastWatched DateTime @default(now())
+
+  @@unique([userId, lessonId])
+  @@map("lesson_progress")
+}
+
+// ==================== COACHES ====================
+
+model Coach {
+  id        String   @id @default(cuid())
+  name      String
+  bio       String?
+  avatar    String?
+  specialty String?
+  courses   Course[]
+
+  @@map("coaches")
+}
+
+// ==================== SUBSCRIPTIONS ====================
+
+model SubscriptionPlan {
+  id            String   @id @default(cuid())
+  title         String
+  durationDays  Int
+  price         Int      // toman
+  originalPrice Int?     // for showing discount
+  isActive      Boolean  @default(true)
+  order         Int      @default(0)
+
+  subscriptions Subscription[]
+
+  @@map("subscription_plans")
+}
+
+model Subscription {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId    String
+  plan      SubscriptionPlan @relation(fields: [planId], references: [id])
+  startDate DateTime @default(now())
+  endDate   DateTime
+  isActive  Boolean  @default(true)
+
+  @@map("subscriptions")
+}
+
+// ==================== PAYMENTS ====================
+
+model Payment {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount      Int
+  status      PaymentStatus @default(PENDING)
+  authority   String?       // zarinpal authority
+  refId       String?       // zarinpal ref id
+  description String?
+  createdAt   DateTime      @default(now())
+
+  @@map("payments")
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+// ==================== FAVORITES ====================
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId   String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, courseId])
+  @@map("favorites")
+}
+
+// ==================== TICKETS ====================
+
+model Ticket {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject   String
+  status    TicketStatus @default(OPEN)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  messages  TicketMessage[]
+
+  @@map("tickets")
+}
+
+model TicketMessage {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  content   String
+  isAdmin   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("ticket_messages")
+}
+
+enum TicketStatus {
+  OPEN
+  ANSWERED
+  CLOSED
+}
