@@ -59,7 +59,12 @@ function VerifyForm() {
       });
 
       if (res.ok) {
-        router.push("/");
+        const data = await res.json();
+        if (data.user?.isNew) {
+          router.push("/onboarding");
+        } else {
+          router.push("/");
+        }
       }
     } catch {
       // handle error

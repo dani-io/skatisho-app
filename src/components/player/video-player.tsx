@@ -29,7 +29,7 @@ export function VideoPlayer({ src, poster, onEnded, onProgress }: VideoPlayerPro
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
-  const hideTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -98,7 +98,7 @@ export function VideoPlayer({ src, poster, onEnded, onProgress }: VideoPlayerPro
     const rect = bar.getBoundingClientRect();
     const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
     // RTL: calculate from right
-    const ratio = (clientX - rect.left) / rect.width;
+    const ratio = (rect.right - clientX) / rect.width;
     const clamped = Math.max(0, Math.min(1, ratio));
     v.currentTime = clamped * v.duration;
     setCurrentTime(v.currentTime);
@@ -170,24 +170,24 @@ export function VideoPlayer({ src, poster, onEnded, onProgress }: VideoPlayerPro
         {/* Progress Bar */}
         <div
           ref={progressRef}
-          className="h-6 flex items-center cursor-pointer mb-2" dir="ltr"
+          className="h-6 flex items-center cursor-pointer mb-2"
           onClick={handleSeek}
         >
           <div className="w-full h-1 bg-white/20 rounded-full relative">
             {/* Buffered */}
             <div
-              className="absolute top-0 left-0 h-full bg-white/30 rounded-full"
+              className="absolute top-0 right-0 h-full bg-white/30 rounded-full"
               style={{ width: `${bufferProgress}%` }}
             />
             {/* Progress */}
             <div
-              className="absolute top-0 left-0 h-full bg-primary rounded-full"
+              className="absolute top-0 right-0 h-full bg-primary rounded-full"
               style={{ width: `${progress}%` }}
             />
             {/* Thumb */}
             <div
               className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-primary rounded-full shadow"
-              style={{ left: `calc(${progress}% - 6px)` }}
+              style={{ right: `calc(${progress}% - 6px)` }}
             />
           </div>
         </div>
