@@ -10,12 +10,10 @@ const PUBLIC_PATHS = ["/login", "/verify", "/api/auth"];
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Allow public paths
   if (PUBLIC_PATHS.some((path) => pathname.startsWith(path))) {
     return NextResponse.next();
   }
 
-  // Allow static files
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/fonts") ||
@@ -26,7 +24,6 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check session
   const token = req.cookies.get("skatisho-session")?.value;
 
   if (!token) {
@@ -35,7 +32,9 @@ export async function middleware(req: NextRequest) {
 
   try {
     await jwtVerify(token, SECRET);
-    return NextResponse.next();
+    const response = NextResponse.next();
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+    return response;
   } catch {
     return NextResponse.redirect(new URL("/login", req.url));
   }
