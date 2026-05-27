@@ -13,17 +13,22 @@ export async function POST(
     return NextResponse.json({ error: "لطفاً وارد شوید" }, { status: 401 });
   }
 
-  const { completed } = await req.json();
+  const { completed, watchedSec } = await req.json();
 
   await db.lessonProgress.upsert({
     where: {
       userId_lessonId: { userId: session.userId, lessonId },
     },
-    update: { completed, lastWatched: new Date() },
+    update: {
+      completed: completed ?? undefined,
+      watchedSec: watchedSec ?? undefined,
+      lastWatched: new Date(),
+    },
     create: {
       userId: session.userId,
       lessonId,
       completed: completed ?? false,
+      watchedSec: watchedSec ?? 0,
     },
   });
 
