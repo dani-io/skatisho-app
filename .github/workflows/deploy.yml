@@ -1,0 +1,23 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/skatisho-app
+            git pull origin main
+            npm install --production=false
+            npx prisma migrate deploy
+            npm run build
+            pm2 restart skatisho || pm2 start npm --name skatisho -- start -- -H 0.0.0.0
