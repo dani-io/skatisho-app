@@ -159,6 +159,34 @@ async function main() {
     });
   }
 
+  console.log("✅ Plans seeded");
+
+  // Products
+  const products = [
+    { id: "prod-1", title: "اسکیت اینلاین فری‌استایل مدل FR1", price: 12500000, original: 15000000, category: "INLINE_SKATE", brand: "FR Skates", order: 1 },
+    { id: "prod-2", title: "اسکیت سرعت حرفه‌ای کربن", price: 28000000, original: null, category: "SPEED_SKATE", brand: "Bont", order: 2 },
+    { id: "prod-3", title: "ست کامل محافظ (زانو، آرنج، مچ)", price: 2800000, original: 3500000, category: "PROTECTIVE_GEAR", brand: "Powerslide", order: 3 },
+    { id: "prod-4", title: "چرخ ۸۰ میلی‌متری بسته ۴ عددی", price: 1200000, original: null, category: "WHEELS", brand: "Rollerblade", order: 4 },
+    { id: "prod-5", title: "بلبرینگ ABEC-9 بسته ۱۶ عددی", price: 850000, original: 1100000, category: "BEARINGS", brand: "Twincam", order: 5 },
+    { id: "prod-6", title: "کلاه ایمنی اسکیت", price: 1500000, original: null, category: "PROTECTIVE_GEAR", brand: "Triple Eight", order: 6 },
+  ];
+
+  for (const p of products) {
+    await db.product.upsert({
+      where: { id: p.id },
+      update: {},
+      create: {
+        id: p.id,
+        title: p.title,
+        price: p.price,
+        originalPrice: p.original,
+        category: p.category,
+        brand: p.brand,
+        order: p.order,
+      },
+    });
+  }
+
   console.log("✅ Seed complete!");
 }
 

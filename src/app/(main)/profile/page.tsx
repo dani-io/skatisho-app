@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   User,
   Receipt,
@@ -13,19 +15,39 @@ import {
   LogOut,
 } from "lucide-react";
 import Link from "next/link";
+import { toPersianDigits } from "@/lib/utils";
+
+interface UserData {
+  id: string;
+  phone: string;
+  name: string | null;
+  referralCode: string;
+}
 
 const menuItems = [
-  { label: "اطلاعات حساب کاربری", icon: User, href: "/profile/edit" },
-  { label: "فاکتور خرید", icon: Receipt, href: "/profile/invoices" },
-  { label: "علاقه‌مندی‌ها", icon: Heart, href: "/profile/favorites" },
   { label: "خرید اشتراک", icon: Crown, href: "/subscription" },
-  { label: "معرفی به دوستان", icon: Share2, href: "/profile/referral" },
-  { label: "تماس با ما", icon: Headphones, href: "/profile/contact" },
-  { label: "درباره ما", icon: Info, href: "/profile/about" },
-  { label: "سوالات متداول", icon: HelpCircle, href: "/profile/faq" },
+  { label: "فروشگاه اسکیت", icon: Receipt, href: "/shop" },
+  { label: "معرفی به دوستان", icon: Share2, href: "/referral" },
+  { label: "تماس با ما", icon: Headphones, href: "/contact" },
+  { label: "درباره ما", icon: Info, href: "/about" },
+  { label: "سوالات متداول", icon: HelpCircle, href: "/faq" },
 ];
 
 export default function ProfilePage() {
+  const [user, setUser] = useState<UserData | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((data) => setUser(data.user));
+  }, []);
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+  }
+
   return (
     <div className="px-4">
       {/* Avatar & Name */}
@@ -33,10 +55,14 @@ export default function ProfilePage() {
         <div className="w-20 h-20 rounded-full bg-surface-dim flex items-center justify-center mb-3">
           <User className="w-8 h-8 text-on-surface-muted" />
         </div>
-        <h2 className="font-bold text-lg">دانیال</h2>
-        <p className="text-sm text-on-surface-muted mt-0.5" dir="ltr">
-          09179498400
-        </p>
+        <h2 className="font-bold text-lg">
+          {user?.name || "کاربر اسکیتی‌شو"}
+        </h2>
+        {user?.phone && (
+          <p className="text-sm text-on-surface-muted mt-0.5" dir="ltr">
+            {toPersianDigits(user.phone)}
+          </p>
+        )}
       </div>
 
       {/* Menu */}
@@ -57,7 +83,10 @@ export default function ProfilePage() {
       </div>
 
       {/* Logout */}
-      <button className="flex items-center gap-3 w-full py-4 px-2 mt-4 text-error hover:bg-error/5 rounded-xl transition-colors">
+      <button
+        onClick={handleLogout}
+        className="flex items-center gap-3 w-full py-4 px-2 mt-4 text-error hover:bg-error/5 rounded-xl transition-colors"
+      >
         <LogOut className="w-5 h-5" />
         <span className="text-sm font-medium">خروج از حساب</span>
       </button>

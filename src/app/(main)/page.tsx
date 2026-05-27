@@ -1,84 +1,113 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { CourseCard } from "@/components/course/course-card";
 
-// TODO: Replace with real data from API
-const MOCK_COURSES = [
-  {
-    id: "1",
-    title: "آموزش اسکیت عمومی (پایه)",
-    thumbnail: "/images/course-general.jpg",
-    coachName: "مجتبی احمدی و کیمیا بروجردی",
-    lessonsCount: 24,
-    level: "BEGINNER" as const,
-    progress: 0,
-  },
-  {
-    id: "2",
-    title: "آموزش اسکیت سرعت",
-    thumbnail: "/images/course-speed.jpg",
-    coachName: "امیررضا بحرینی مقدم",
-    lessonsCount: 18,
-    level: "INTERMEDIATE" as const,
-    progress: 0,
-  },
-];
+interface Course {
+  id: string;
+  title: string;
+  thumbnail: string | null;
+  coachName: string;
+  lessonsCount: number;
+  level: string;
+  category: string;
+}
+
+interface UserInfo {
+  name: string | null;
+  subscription: { isActive: boolean; plan: { title: string }; endDate: string } | null;
+}
 
 export default function HomePage() {
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [user, setUser] = useState<UserInfo | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/courses").then((r) => r.json()),
+      fetch("/api/auth/me").then((r) => r.json()),
+    ])
+      .then(([coursesData, userData]) => {
+        setCourses(coursesData.courses || []);
+        setUser(userData.user || null);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const hasSubscription = user?.subscription?.isActive && 
+    new Date(user.subscription.endDate) > new Date();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="px-4">
       {/* Header */}
       <header className="flex items-center justify-between pt-6 pb-4">
         <div>
-          <h1 className="text-xl font-bold">اسکیتی‌شو</h1>
+          <h1 className="text-xl font-bold">
+            {user?.name ? `سلام ${user.name}` : "اسکیتی‌شو"}
+          </h1>
           <p className="text-sm text-on-surface-muted mt-0.5">
             دستیار تمرین اسکیت
           </p>
         </div>
         <div className="w-10 h-10 rounded-full bg-surface-dim flex items-center justify-center">
-          <img
-            src="/icons/logo.svg"
-            alt="Logo"
-            className="w-6 h-6"
-          />
+          <img src="/icons/logo.svg" alt="Logo" className="w-6 h-6" />
         </div>
       </header>
 
       {/* Subscription Banner */}
-      <div className="bg-gradient-to-l from-primary to-primary-dark rounded-[var(--radius-card)] p-4 mb-6">
-        <p className="text-sm font-medium text-on-surface">
-          وضعیت اشتراک شما
-        </p>
-        <p className="text-lg font-bold text-on-surface mt-1">
-          بدون اشتراک فعال
-        </p>
-        <Link
-          href="/subscription"
-          className="inline-flex items-center gap-1 mt-3 bg-on-surface text-white px-4 py-2 rounded-[var(--radius-button)] text-sm font-medium"
-        >
-          خرید اشتراک
-          <ChevronLeft className="w-4 h-4" />
-        </Link>
-      </div>
-
-      {/* Courses Section */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold">آموزش‌ها</h2>
+      {hasSubscription ? (
+        <div className="bg-gradient-to-l from-success to-green-600 rounded-[var(--radius-card)] p-4 mb-6">
+          <p className="text-sm font-medium text-white">اشتراک فعال</p>
+          <p className="text-lg font-bold text-white mt-1">
+            {user?.subscription?.plan.title}
+          </p>
+        </div>
+      ) : (
+        <div className="bg-gradient-to-l from-primary to-primary-dark rounded-[var(--radius-card)] p-4 mb-6">
+          <p className="text-sm font-medium text-on-surface">
+            وضعیت اشتراک شما
+          </p>
+          <p className="text-lg font-bold text-on-surface mt-1">
+            بدون اشتراک فعال
+          </p>
           <Link
-            href="/courses"
-            className="text-sm text-primary font-medium flex items-center gap-0.5"
+            href="/subscription"
+            className="inline-flex items-center gap-1 mt-3 bg-on-surface text-white px-4 py-2 rounded-[var(--radius-button)] text-sm font-medium"
           >
-            مشاهده همه
+            خرید اشتراک
             <ChevronLeft className="w-4 h-4" />
           </Link>
         </div>
+      )}
 
-        <div className="grid gap-4">
-          {MOCK_COURSES.map((course) => (
-            <CourseCard key={course.id} {...course} />
-          ))}
+      {/* Courses */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold">آموزش‌ها</h2>
         </div>
+
+        {courses.length === 0 ? (
+          <p className="text-center text-on-surface-muted py-8">
+            دوره‌ای یافت نشد
+          </p>
+        ) : (
+          <div className="grid gap-4">
+            {courses.map((course) => (
+              <CourseCard key={course.id} {...course} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Quick Access */}

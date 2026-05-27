@@ -1,27 +1,50 @@
 @import "tailwindcss";
 
+/* ==================== THEME ==================== */
 @theme inline {
+  /* Brand Colors */
   --color-primary: #F5B800;
   --color-primary-light: #FFD54F;
   --color-primary-dark: #C49000;
+
+  /* Neutrals */
   --color-surface: #FFFFFF;
   --color-surface-dim: #F5F5F5;
   --color-surface-container: #EEEEEE;
   --color-on-surface: #1A1A1A;
   --color-on-surface-muted: #6B7280;
+
+  /* Semantic */
   --color-success: #10B981;
   --color-error: #EF4444;
   --color-info: #3B82F6;
+
+  /* Spacing */
+  --spacing-safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Font */
   --font-sans: "IRANSansX", system-ui, sans-serif;
+
+  /* Radius */
   --radius-card: 16px;
   --radius-button: 12px;
   --radius-input: 10px;
 }
 
+/* ==================== FONT ==================== */
 @font-face {
   font-family: "IRANSansX";
   src: url("/fonts/IRANSansX-Regular.woff2") format("woff2");
   font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IRANSansX";
+  src: url("/fonts/IRANSansX-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
   font-display: swap;
 }
 
@@ -29,7 +52,21 @@
   font-family: "IRANSansX";
   src: url("/fonts/IRANSansX-Bold.woff2") format("woff2");
   font-weight: 700;
+  font-style: normal;
   font-display: swap;
+}
+
+@font-face {
+  font-family: "IRANSansX";
+  src: url("/fonts/IRANSansX-Light.woff2") format("woff2");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ==================== BASE ==================== */
+* {
+  -webkit-tap-highlight-color: transparent;
 }
 
 html {
@@ -40,6 +77,31 @@ html {
 body {
   background: var(--color-surface);
   color: var(--color-on-surface);
+  overscroll-behavior-y: contain;
+  -webkit-font-smoothing: antialiased;
 }
 
+/* ==================== SCROLLBAR ==================== */
+::-webkit-scrollbar {
+  width: 4px;
+}
 
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface-container);
+  border-radius: 999px;
+}
+
+/* ==================== PWA ==================== */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* ==================== UTILITIES ==================== */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
