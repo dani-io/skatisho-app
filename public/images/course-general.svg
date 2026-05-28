@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">
+  <defs>
+    <linearGradient id="bg1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F5B800"/>
+      <stop offset="100%" style="stop-color:#C49000"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#bg1)"/>
+  <circle cx="650" cy="100" r="180" fill="#fff" opacity="0.08"/>
+  <circle cx="700" cy="350" r="120" fill="#fff" opacity="0.05"/>
+  <circle cx="100" cy="380" r="90" fill="#fff" opacity="0.06"/>
+  <g transform="translate(400, 200) scale(2)" fill="#fff" opacity="0.9">
+    <circle cx="0" cy="-65" r="12"/>
+    <path d="M-14,-72 Q0,-85 14,-72 Q14,-65 -14,-65 Z" opacity="0.8"/>
+    <path d="M-5,-53 L-12,-20 L12,-20 L5,-53 Z"/>
+    <path d="M-5,-48 Q-30,-35 -35,-25" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <path d="M5,-48 Q25,-30 35,-35" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <path d="M-8,-20 Q-25,10 -45,15" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M8,-20 Q15,10 20,20" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <ellipse cx="20" cy="24" rx="15" ry="4"/>
+    <ellipse cx="-45" cy="19" rx="15" ry="4"/>
+    <circle cx="12" cy="28" r="3" fill="#C49000"/><circle cx="20" cy="28" r="3" fill="#C49000"/><circle cx="28" cy="28" r="3" fill="#C49000"/>
+    <circle cx="-53" cy="23" r="3" fill="#C49000"/><circle cx="-45" cy="23" r="3" fill="#C49000"/><circle cx="-37" cy="23" r="3" fill="#C49000"/>
+  </g>
+  <rect width="800" height="450" fill="url(#o1)" opacity="0"/>
+  <rect x="0" y="320" width="800" height="130" fill="#000" opacity="0.3"/>
+  <text x="400" y="380" text-anchor="middle" font-family="system-ui" font-size="28" font-weight="bold" fill="#fff">آموزش اسکیت عمومی</text>
+  <text x="400" y="415" text-anchor="middle" font-family="system-ui" font-size="16" fill="#fff" opacity="0.8">از صفر تا حرفه‌ای</text>
+</svg>

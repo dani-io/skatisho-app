@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">
+  <defs>
+    <linearGradient id="bg2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1A1A1A"/>
+      <stop offset="100%" style="stop-color:#374151"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#bg2)"/>
+  <circle cx="200" cy="80" r="200" fill="#F5B800" opacity="0.06"/>
+  <circle cx="650" cy="400" r="150" fill="#F5B800" opacity="0.04"/>
+  <!-- Speed lines -->
+  <line x1="50" y1="200" x2="250" y2="200" stroke="#F5B800" stroke-width="2" opacity="0.2"/>
+  <line x1="80" y1="230" x2="220" y2="230" stroke="#F5B800" stroke-width="1.5" opacity="0.15"/>
+  <line x1="60" y1="260" x2="200" y2="260" stroke="#F5B800" stroke-width="1" opacity="0.1"/>
+  <line x1="100" y1="170" x2="280" y2="170" stroke="#F5B800" stroke-width="1.5" opacity="0.12"/>
+  <!-- Speed skater - aggressive forward lean -->
+  <g transform="translate(420, 200) scale(2)" fill="#F5B800" opacity="0.9">
+    <circle cx="15" cy="-60" r="11"/>
+    <path d="M5,-72 Q18,-82 28,-68 Q25,-58 5,-60 Z" opacity="0.8"/>
+    <!-- Aero body - leaning forward -->
+    <path d="M10,-50 L-15,-22 L15,-18 L20,-48 Z"/>
+    <!-- Left arm back -->
+    <path d="M8,-44 Q-15,-50 -25,-42" stroke="#F5B800" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <!-- Right arm back -->
+    <path d="M15,-44 Q0,-55 -10,-48" stroke="#F5B800" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <!-- Left leg - power push -->
+    <path d="M-10,-22 Q-35,5 -50,8" stroke="#F5B800" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <!-- Right leg - glide -->
+    <path d="M10,-18 Q20,10 30,18" stroke="#F5B800" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <!-- Speed skate boots (longer) -->
+    <ellipse cx="30" cy="22" rx="20" ry="4"/>
+    <ellipse cx="-50" cy="12" rx="18" ry="4"/>
+    <!-- Wheels (5 wheels for speed) -->
+    <circle cx="18" cy="26" r="3" fill="#1A1A1A"/><circle cx="25" cy="26" r="3" fill="#1A1A1A"/>
+    <circle cx="32" cy="26" r="3" fill="#1A1A1A"/><circle cx="39" cy="26" r="3" fill="#1A1A1A"/>
+    <circle cx="46" cy="26" r="3" fill="#1A1A1A"/>
+    <circle cx="-58" cy="16" r="3" fill="#1A1A1A"/><circle cx="-50" cy="16" r="3" fill="#1A1A1A"/>
+    <circle cx="-42" cy="16" r="3" fill="#1A1A1A"/><circle cx="-34" cy="16" r="3" fill="#1A1A1A"/>
+  </g>
+  <rect x="0" y="320" width="800" height="130" fill="#000" opacity="0.4"/>
+  <text x="400" y="380" text-anchor="middle" font-family="system-ui" font-size="28" font-weight="bold" fill="#F5B800">آموزش اسکیت سرعت</text>
+  <text x="400" y="415" text-anchor="middle" font-family="system-ui" font-size="16" fill="#fff" opacity="0.7">مسیر قهرمانی</text>
+</svg>
