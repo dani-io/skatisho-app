@@ -19,6 +19,7 @@ export async function GET() {
       skillLevel: true,
       referralCode: true,
       walletBalance: true,
+      createdAt: true,
       subscription: {
         select: {
           endDate: true,
