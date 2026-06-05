@@ -5,6 +5,7 @@ import { ArrowRight, Check, Clock, Zap, Gift, Star } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn, formatPrice, toPersianDigits } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 const PLANS = [
   {
@@ -63,6 +64,8 @@ const PLANS = [
 export default function SubscriptionPage() {
   const [selectedPlan, setSelectedPlan] = useState("quarterly");
   const [discountCode, setDiscountCode] = useState("");
+  const [paying, setPaying] = useState(false);
+  const router = useRouter();
   const [isNewUser, setIsNewUser] = useState(false);
   const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 });
 
@@ -105,6 +108,36 @@ export default function SubscriptionPage() {
   const plan = PLANS.find((p) => p.id === selectedPlan);
   const discountMultiplier = isNewUser ? 0.6 : 1; // 40% off for new users
   const finalPrice = plan ? Math.round(plan.price * discountMultiplier) : 0;
+
+  async function handlePurchase() {
+    if (!plan) return;
+    if (plan.isTrial) {
+      // Free trial - activate directly
+      setPaying(true);
+      try {
+        const res = await fetch("/api/payments/trial", { method: "POST" });
+        if (res.ok) router.push("/payment/result?status=success&refId=trial");
+      } finally { setPaying(false); }
+      return;
+    }
+    setPaying(true);
+    try {
+      const res = await fetch("/api/payments/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "subscription",
+          planTitle: plan.title,
+          planPrice: finalPrice,
+          planDuration: plan.duration,
+        }),
+      });
+      const data = await res.json();
+      if (data.payUrl) {
+        window.location.href = data.payUrl;
+      }
+    } finally { setPaying(false); }
+  }
 
   function calcDiscount(original: number | null, current: number) {
     if (!original) return 0;
@@ -259,10 +292,10 @@ export default function SubscriptionPage() {
 
       {/* CTA */}
       <div className="mt-4 pb-6">
-        <Button size="full">
+        <Button size="full" onClick={handlePurchase} disabled={paying}>
           {plan?.isTrial
             ? "شروع دوره آزمایشی رایگان"
-            : `پرداخت ${formatPrice(finalPrice)}`}
+            : paying ? "در حال انتقال..." : `پرداخت ${formatPrice(finalPrice)}`}
         </Button>
       </div>
     </div>

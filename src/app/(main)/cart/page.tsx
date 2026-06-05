@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 
 import { ArrowRight, Minus, Plus, Trash2, ShoppingBag, ShoppingCart } from "lucide-react";
 import Link from "next/link";
@@ -8,6 +9,30 @@ import { useCartStore } from "@/store/cart";
 
 export default function CartPage() {
   const { items, updateQuantity, removeItem, clearCart, totalPrice } = useCartStore();
+  const [paying, setPaying] = useState(false);
+
+  async function handleCheckout() {
+    setPaying(true);
+    try {
+      const res = await fetch("/api/payments/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "order",
+          cartItems: items.map((i) => ({
+            productId: i.productId,
+            quantity: i.quantity,
+            price: i.price,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (data.payUrl) {
+        clearCart();
+        window.location.href = data.payUrl;
+      }
+    } finally { setPaying(false); }
+  }
 
   if (items.length === 0) {
     return (
@@ -125,8 +150,8 @@ export default function CartPage() {
             <span className="text-on-surface-muted">هزینه ارسال</span>
             <span className="text-success text-xs">پس از ثبت سفارش محاسبه می‌شود</span>
           </div>
-          <Button size="full" className="mt-2">
-            ثبت سفارش — {formatPrice(totalPrice())}
+          <Button size="full" className="mt-2" onClick={handleCheckout} disabled={paying}>
+            {paying ? "در حال انتقال به درگاه..." : `ثبت سفارش — ${formatPrice(totalPrice())}`}
           </Button>
         </div>
       </div>
