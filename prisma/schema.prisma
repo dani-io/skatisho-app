@@ -365,3 +365,39 @@ model UserBadge {
   @@unique([userId, badgeId])
   @@map("user_badges")
 }
+
+// ==================== COUPONS ====================
+model Coupon {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  type          CouponType
+  value         Int
+  minAmount     Int?
+  maxDiscount   Int?
+  usageLimit    Int?
+  usedCount     Int       @default(0)
+  expiresAt     DateTime?
+  isActive      Boolean   @default(true)
+  description   String?
+  createdAt     DateTime  @default(now())
+  usages        CouponUsage[]
+
+  @@map("coupons")
+}
+
+model CouponUsage {
+  id        String   @id @default(cuid())
+  couponId  String
+  coupon    Coupon   @relation(fields: [couponId], references: [id])
+  userId    String
+  amount    Int
+  createdAt DateTime @default(now())
+
+  @@unique([couponId, userId])
+  @@map("coupon_usages")
+}
+
+enum CouponType {
+  PERCENT
+  FIXED
+}
