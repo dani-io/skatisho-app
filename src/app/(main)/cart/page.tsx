@@ -140,7 +140,7 @@ export default function CartPage() {
       </div>
 
       {/* Fixed Bottom - Order Summary */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-surface-container max-w-lg mx-auto">
+      <div className="fixed bottom-20 left-0 right-0 bg-white border-t border-surface-container max-w-lg mx-auto">
         <div className="px-4 py-3 space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="text-on-surface-muted">جمع سبد خرید</span>
