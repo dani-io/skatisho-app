@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import {
+useEffect, useState } from "react";
+import {
+useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
+  MessageSquare,
   LayoutDashboard,
   Users,
   BookOpen,
@@ -13,7 +16,8 @@ import {
   Menu,
   X,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import {
+  cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "داشبورد", icon: LayoutDashboard },
@@ -21,6 +25,7 @@ const NAV_ITEMS = [
   { href: "/admin/courses", label: "دوره‌ها و ویدئوها", icon: BookOpen },
   { href: "/admin/subscriptions", label: "اشتراک‌ها", icon: Crown },
   { href: "/admin/products", label: "فروشگاه", icon: ShoppingBag },
+  { href: "/admin/tickets", label: "تیکت‌ها", icon: MessageSquare },
 ];
 
 export default function AdminLayout({
