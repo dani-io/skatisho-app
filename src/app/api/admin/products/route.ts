@@ -41,6 +41,8 @@ export async function PUT(req: NextRequest) {
       brand: body.brand,
       inStock: body.inStock,
       isPublished: body.isPublished,
+      customizable: body.customizable,
+      options: body.options,
     },
   });
   return NextResponse.json({ product });
