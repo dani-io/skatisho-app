@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { ArrowRight, Minus, Plus, Trash2, ShoppingBag, ShoppingCart } from "lucide-react";
 import Link from "next/link";
@@ -9,6 +10,7 @@ import { useCartStore } from "@/store/cart";
 
 export default function CartPage() {
   const { items, updateQuantity, removeItem, clearCart, totalPrice } = useCartStore();
+  const router = useRouter();
   const [paying, setPaying] = useState(false);
 
   async function handleCheckout() {
@@ -150,8 +152,8 @@ export default function CartPage() {
             <span className="text-on-surface-muted">هزینه ارسال</span>
             <span className="text-success text-xs">پس از ثبت سفارش محاسبه می‌شود</span>
           </div>
-          <Button size="full" className="mt-2" onClick={handleCheckout} disabled={paying}>
-            {paying ? "در حال انتقال به درگاه..." : `ثبت سفارش — ${formatPrice(totalPrice())}`}
+          <Button size="full" className="mt-2" onClick={() => router.push("/checkout")}>
+            ثبت سفارش
           </Button>
         </div>
       </div>
