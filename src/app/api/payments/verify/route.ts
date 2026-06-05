@@ -15,27 +15,25 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const authority = url.searchParams.get("Authority");
   const status = url.searchParams.get("Status");
-  const meta = url.searchParams.get("meta");
+  const paymentId = url.searchParams.get("paymentId");
   const origin = url.origin;
 
-  if (!authority || !meta) {
-    return NextResponse.redirect(`${origin}/payment/result?status=error`);
-  }
-
-  let metadata: any;
-  try {
-    metadata = JSON.parse(decodeURIComponent(meta));
-  } catch {
+  if (!authority || !paymentId) {
     return NextResponse.redirect(`${origin}/payment/result?status=error`);
   }
 
   const payment = await db.payment.findFirst({
-    where: { id: metadata.paymentId, authority },
+    where: { id: paymentId },
   });
 
   if (!payment) {
     return NextResponse.redirect(`${origin}/payment/result?status=error`);
   }
+
+  let metadata: any = {};
+  try {
+    metadata = JSON.parse(payment.description || "{}");
+  } catch {}
 
   if (status !== "OK") {
     await db.payment.update({
@@ -62,7 +60,6 @@ export async function GET(req: NextRequest) {
       const endDate = new Date();
       endDate.setDate(endDate.getDate() + days);
 
-      // Find or create plan in DB
       let plan = await db.subscriptionPlan.findFirst({
         where: { title: metadata.planTitle },
       });
@@ -96,7 +93,7 @@ export async function GET(req: NextRequest) {
       await createNotification({
         userId: payment.userId,
         title: "اشتراک فعال شد!",
-        message: `اشتراک ${metadata.planTitle} شما با موفقیت فعال شد`,
+        message: `اشتراک ${metadata.planTitle} با موفقیت فعال شد`,
         type: "SUBSCRIPTION",
         link: "/subscription",
       });
@@ -139,7 +136,7 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.redirect(`${origin}/payment/result?status=success&refId=${refId}`);
-  } catch (err: any) {
+  } catch {
     await db.payment.update({
       where: { id: payment.id },
       data: { status: "FAILED" },
