@@ -23,7 +23,7 @@ import {
   Weight,
   Cake,
   Heart,
-  ShoppingBag,
+  Package, ShoppingBag,
   TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -353,7 +353,8 @@ export default function ProfilePage() {
       <div className="bg-white rounded-[var(--radius-card)] border border-surface-container mb-4">
         {[
           { label: "خرید اشتراک", icon: Crown, href: "/subscription" },
-          { label: "فروشگاه", icon: ShoppingBag, href: "/shop" },
+          { label: "فروشگاه", icon: Package, ShoppingBag, href: "/shop" },
+          { label: "سفارشات من", icon: Package, href: "/orders" },
           { label: "کیف پول", icon: TrendingUp, href: "/wallet" },
           { label: "معرفی به دوستان", icon: Share2, href: "/referral" },
           { label: "سوالات متداول", icon: HelpCircle, href: "/faq" },
