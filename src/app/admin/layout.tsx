@@ -9,6 +9,7 @@ import {
   MessageSquare,
   Tag,
   BarChart3,
+  Package,
   LayoutDashboard,
   Users,
   BookOpen,
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { href: "/admin/products", label: "فروشگاه", icon: ShoppingBag },
   { href: "/admin/tickets", label: "تیکت‌ها", icon: MessageSquare },
   { href: "/admin/coupons", label: "کدهای تخفیف", icon: Tag },
+  { href: "/admin/orders", label: "سفارشات", icon: Package },
   { href: "/admin/analytics", label: "گزارشات", icon: BarChart3 },
 ];
 

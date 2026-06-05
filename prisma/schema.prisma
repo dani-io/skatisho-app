@@ -269,6 +269,7 @@ model Order {
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   totalAmount Int
   status      OrderStatus @default(PENDING)
+  trackingCode String?
   address     String?
   phone       String?
   createdAt   DateTime    @default(now())
