@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { NotificationBell } from "@/components/layout/notification-bell";
 import { ChevronLeft, Zap } from "lucide-react";
 import Link from "next/link";
 import { CourseCard } from "@/components/course/course-card";
@@ -61,8 +62,11 @@ export default function HomePage() {
             دستیار تمرین اسکیت
           </p>
         </div>
-        <div className="w-10 h-10 rounded-full bg-surface-dim flex items-center justify-center">
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <div className="w-10 h-10 rounded-full bg-surface-dim flex items-center justify-center">
           <img src="/icons/logo.svg" alt="Logo" className="w-6 h-6" />
+          </div>
         </div>
       </header>
 

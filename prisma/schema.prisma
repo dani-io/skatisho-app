@@ -26,6 +26,7 @@ model User {
   tickets       Ticket[]
   payments      Payment[]
   orders        Order[]
+  notifications Notification[]
   walletBalance Int       @default(0)
   referralCode  String    @unique @default(cuid())
   referredBy    String?
@@ -289,4 +290,27 @@ enum OrderStatus {
   SHIPPED
   DELIVERED
   CANCELLED
+}
+
+// ==================== NOTIFICATIONS ====================
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      NotificationType @default(GENERAL)
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  GENERAL
+  TICKET_REPLY
+  ORDER_UPDATE
+  SUBSCRIPTION
+  SYSTEM
 }

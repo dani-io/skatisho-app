@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { createNotification } from "@/lib/notifications";
 
 const ADMIN_PHONES = ["09123456789", "09179498400"];
 
@@ -33,6 +34,21 @@ export async function POST(
     where: { id: ticketId },
     data: { status: "ANSWERED" },
   });
+
+  // Send notification to user
+  const ticket = await db.ticket.findUnique({
+    where: { id: ticketId },
+    select: { userId: true, subject: true },
+  });
+  if (ticket) {
+    await createNotification({
+      userId: ticket.userId,
+      title: "پاسخ جدید به تیکت",
+      message: `تیکت «${ticket.subject}» پاسخ داده شد`,
+      type: "TICKET_REPLY",
+      link: `/tickets/${ticketId}`,
+    });
+  }
 
   return NextResponse.json({ message: newMessage }, { status: 201 });
 }
