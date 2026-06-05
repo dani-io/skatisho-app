@@ -1,15 +1,26 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowRight, ShoppingCart, Check, ShoppingBag,
-  Minus, Plus, Star, Truck, Shield,
+  Star, Truck, Shield,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { formatPrice, toPersianDigits, cn } from "@/lib/utils";
 import { useCartStore } from "@/store/cart";
+
+interface OptionValue {
+  label: string;
+  color?: string;
+  priceAdjust: number;
+}
+
+interface ProductOption {
+  name: string;
+  type: "color" | "select";
+  values: OptionValue[];
+}
 
 interface Product {
   id: string;
@@ -21,15 +32,14 @@ interface Product {
   category: string;
   brand: string | null;
   inStock: boolean;
+  customizable: boolean;
+  options: ProductOption[] | null;
 }
 
 const categoryLabels: Record<string, string> = {
-  INLINE_SKATE: "اسکیت اینلاین",
-  SPEED_SKATE: "اسکیت سرعت",
-  PROTECTIVE_GEAR: "محافظ",
-  WHEELS: "چرخ",
-  BEARINGS: "بلبرینگ",
-  ACCESSORIES: "لوازم جانبی",
+  INLINE_SKATE: "اسکیت اینلاین", SPEED_SKATE: "اسکیت سرعت",
+  PROTECTIVE_GEAR: "محافظ", WHEELS: "چرخ",
+  BEARINGS: "بلبرینگ", ACCESSORIES: "لوازم جانبی",
 };
 
 export default function ProductDetailPage() {
@@ -39,7 +49,7 @@ export default function ProductDetailPage() {
   const [related, setRelated] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [added, setAdded] = useState(false);
-
+  const [selections, setSelections] = useState<Record<string, string>>({});
   const { addItem, items } = useCartStore();
   const cartCount = items.reduce((acc, i) => acc + i.quantity, 0);
 
@@ -49,18 +59,44 @@ export default function ProductDetailPage() {
       .then((d) => {
         setProduct(d.product);
         setRelated(d.related || []);
+        // Set default selections
+        if (d.product?.options) {
+          const defaults: Record<string, string> = {};
+          d.product.options.forEach((opt: ProductOption) => {
+            if (opt.values.length > 0) defaults[opt.name] = opt.values[0].label;
+          });
+          setSelections(defaults);
+        }
       })
       .finally(() => setLoading(false));
   }, [productId]);
 
+  function getPriceAdjust(): number {
+    if (!product?.options) return 0;
+    let adjust = 0;
+    product.options.forEach((opt) => {
+      const selected = selections[opt.name];
+      const val = opt.values.find((v) => v.label === selected);
+      if (val) adjust += val.priceAdjust;
+    });
+    return adjust;
+  }
+
+  function allOptionsSelected(): boolean {
+    if (!product?.customizable || !product.options) return true;
+    return product.options.every((opt) => selections[opt.name]);
+  }
+
   function handleAddToCart() {
-    if (!product) return;
+    if (!product || !allOptionsSelected()) return;
+    const priceAdjust = getPriceAdjust();
     addItem({
       productId: product.id,
       title: product.title,
-      price: product.price,
+      price: product.price + priceAdjust,
       thumbnail: product.thumbnail,
       brand: product.brand,
+      selectedOptions: product.customizable ? selections : undefined,
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
@@ -83,6 +119,8 @@ export default function ProductDetailPage() {
     );
   }
 
+  const priceAdjust = getPriceAdjust();
+  const finalPrice = product.price + priceAdjust;
   const discount = product.originalPrice
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
@@ -114,39 +152,80 @@ export default function ProductDetailPage() {
       </div>
 
       <div className="px-4">
-        {/* Category & Brand */}
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xs bg-surface-dim text-on-surface-muted px-2 py-0.5 rounded-full">
             {categoryLabels[product.category] || product.category}
           </span>
-          {product.brand && (
-            <span className="text-xs text-on-surface-muted">{product.brand}</span>
+          {product.brand && <span className="text-xs text-on-surface-muted">{product.brand}</span>}
+          {product.customizable && (
+            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">سفارشی</span>
           )}
         </div>
 
-        {/* Title */}
         <h1 className="text-lg font-bold leading-relaxed mb-3">{product.title}</h1>
 
         {/* Price */}
         <div className="flex items-center gap-3 mb-4">
-          <span className="text-2xl font-bold">{formatPrice(product.price)}</span>
-          {product.originalPrice && (
-            <>
-              <span className="text-sm text-on-surface-muted line-through">
-                {formatPrice(product.originalPrice)}
-              </span>
-              <span className="bg-error text-white text-xs font-bold px-2 py-0.5 rounded">
-                {toPersianDigits(discount)}٪ تخفیف
-              </span>
-            </>
+          <span className="text-2xl font-bold">{formatPrice(finalPrice)}</span>
+          {(product.originalPrice || priceAdjust > 0) && (
+            <span className="text-sm text-on-surface-muted line-through">
+              {formatPrice(product.originalPrice || product.price)}
+            </span>
+          )}
+          {discount > 0 && !priceAdjust && (
+            <span className="bg-error text-white text-xs font-bold px-2 py-0.5 rounded">
+              {toPersianDigits(discount)}٪ تخفیف
+            </span>
           )}
         </div>
 
-        {/* Stock Status */}
-        <div className={cn(
-          "flex items-center gap-2 text-sm mb-4",
-          product.inStock ? "text-success" : "text-error"
-        )}>
+        {/* Custom Options */}
+        {product.customizable && product.options && (
+          <div className="space-y-4 mb-6 p-4 bg-surface-dim rounded-[var(--radius-card)]">
+            {product.options.map((opt) => (
+              <div key={opt.name}>
+                <p className="text-sm font-bold mb-2">{opt.name}</p>
+                {opt.type === "color" ? (
+                  <div className="flex gap-2 flex-wrap">
+                    {opt.values.map((v) => (
+                      <button key={v.label} onClick={() => setSelections((p) => ({ ...p, [opt.name]: v.label }))}
+                        className={`w-10 h-10 rounded-full border-3 transition-all ${
+                          selections[opt.name] === v.label ? "border-primary scale-110 shadow-md" : "border-transparent"
+                        }`}
+                        style={{ backgroundColor: v.color || "#ccc" }}
+                        title={`${v.label}${v.priceAdjust ? ` (+${formatPrice(v.priceAdjust)})` : ""}`}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex gap-2 flex-wrap">
+                    {opt.values.map((v) => (
+                      <button key={v.label} onClick={() => setSelections((p) => ({ ...p, [opt.name]: v.label }))}
+                        className={`px-4 py-2 rounded-xl text-xs font-medium border-2 transition-colors ${
+                          selections[opt.name] === v.label
+                            ? "border-primary bg-primary/5 text-primary"
+                            : "border-surface-container bg-white"
+                        }`}>
+                        {v.label}
+                        {v.priceAdjust > 0 && (
+                          <span className="text-[9px] text-on-surface-muted block">+{formatPrice(v.priceAdjust)}</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+            {priceAdjust > 0 && (
+              <p className="text-xs text-primary font-medium pt-2 border-t border-surface-container">
+                هزینه اضافی گزینه‌ها: +{formatPrice(priceAdjust)}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Stock */}
+        <div className={cn("flex items-center gap-2 text-sm mb-4", product.inStock ? "text-success" : "text-error")}>
           {product.inStock ? <Check className="w-4 h-4" /> : <ShoppingBag className="w-4 h-4" />}
           {product.inStock ? "موجود در انبار" : "ناموجود"}
         </div>
@@ -165,7 +244,6 @@ export default function ProductDetailPage() {
           ))}
         </div>
 
-        {/* Description */}
         {product.description && (
           <div className="mb-6">
             <h2 className="font-bold text-sm mb-2">توضیحات محصول</h2>
@@ -173,17 +251,13 @@ export default function ProductDetailPage() {
           </div>
         )}
 
-        {/* Related Products */}
         {related.length > 0 && (
           <div className="mb-6">
             <h2 className="font-bold text-sm mb-3">محصولات مشابه</h2>
             <div className="flex gap-3 overflow-x-auto -mx-4 px-4 pb-2">
               {related.map((p) => (
-                <Link
-                  key={p.id}
-                  href={`/shop/${p.id}`}
-                  className="shrink-0 w-36 bg-white border border-surface-container rounded-[var(--radius-card)] overflow-hidden"
-                >
+                <Link key={p.id} href={`/shop/${p.id}`}
+                  className="shrink-0 w-36 bg-white border border-surface-container rounded-[var(--radius-card)] overflow-hidden">
                   <div className="aspect-square bg-surface-dim flex items-center justify-center">
                     <ShoppingBag className="w-6 h-6 text-on-surface-muted/20" />
                   </div>
@@ -198,24 +272,17 @@ export default function ProductDetailPage() {
         )}
       </div>
 
-      {/* Fixed Bottom CTA */}
+      {/* Fixed CTA */}
       <div className="fixed bottom-20 left-0 right-0 bg-white border-t border-surface-container p-4 max-w-lg mx-auto">
-        <Button
-          size="full"
-          disabled={!product.inStock}
+        <Button size="full" disabled={!product.inStock || !allOptionsSelected()}
           onClick={handleAddToCart}
-          className={added ? "bg-success hover:bg-success" : ""}
-        >
+          className={added ? "bg-success hover:bg-success" : ""}>
           {added ? (
-            <>
-              <Check className="w-4 h-4 ml-2" />
-              اضافه شد!
-            </>
+            <><Check className="w-4 h-4 ml-2" /> اضافه شد!</>
+          ) : !allOptionsSelected() ? (
+            "لطفاً گزینه‌ها را انتخاب کنید"
           ) : (
-            <>
-              <ShoppingCart className="w-4 h-4 ml-2" />
-              افزودن به سبد خرید
-            </>
+            <><ShoppingCart className="w-4 h-4 ml-2" /> افزودن به سبد — {formatPrice(finalPrice)}</>
           )}
         </Button>
       </div>
