@@ -78,6 +78,6 @@ export async function POST(req: NextRequest) {
       where: { id: payment.id },
       data: { status: "FAILED" },
     });
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err.message, stack: err.stack }, { status: 500 });
   }
 }
