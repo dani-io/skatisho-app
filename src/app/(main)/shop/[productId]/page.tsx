@@ -199,7 +199,7 @@ export default function ProductDetailPage() {
       </div>
 
       {/* Fixed Bottom CTA */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-surface-container p-4 max-w-lg mx-auto">
+      <div className="fixed bottom-20 left-0 right-0 bg-white border-t border-surface-container p-4 max-w-lg mx-auto">
         <Button
           size="full"
           disabled={!product.inStock}
