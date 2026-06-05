@@ -16,6 +16,11 @@ model User {
   avatar        String?
   skillLevel    SkillLevel?
   goal          String?
+  birthDate     DateTime?
+  gender        String?
+  height        Int?
+  weight        Int?
+  points        Int       @default(0)
   password      String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -27,6 +32,8 @@ model User {
   payments      Payment[]
   orders        Order[]
   notifications Notification[]
+  addresses     Address[]
+  badges        UserBadge[]
   walletBalance Int       @default(0)
   referralCode  String    @unique @default(cuid())
   referredBy    String?
@@ -313,4 +320,48 @@ enum NotificationType {
   ORDER_UPDATE
   SUBSCRIPTION
   SYSTEM
+}
+
+// ==================== ADDRESSES ====================
+model Address {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  province  String
+  city      String
+  address   String
+  postalCode String?
+  phone     String?
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("addresses")
+}
+
+// ==================== GAMIFICATION ====================
+model Badge {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  title       String
+  description String
+  icon        String
+  color       String   @default("#F5B800")
+  condition   String
+  points      Int      @default(0)
+  userBadges  UserBadge[]
+
+  @@map("badges")
+}
+
+model UserBadge {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId   String
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+  earnedAt  DateTime @default(now())
+
+  @@unique([userId, badgeId])
+  @@map("user_badges")
 }

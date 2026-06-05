@@ -4,7 +4,6 @@ import { db } from "@/lib/db";
 
 export async function GET() {
   const session = await getSession();
-
   if (!session) {
     return NextResponse.json({ user: null }, { status: 401 });
   }
@@ -17,6 +16,12 @@ export async function GET() {
       name: true,
       avatar: true,
       skillLevel: true,
+      goal: true,
+      birthDate: true,
+      gender: true,
+      height: true,
+      weight: true,
+      points: true,
       referralCode: true,
       walletBalance: true,
       createdAt: true,
@@ -25,6 +30,14 @@ export async function GET() {
           endDate: true,
           isActive: true,
           plan: { select: { title: true } },
+        },
+      },
+      _count: {
+        select: {
+          progress: { where: { completed: true } },
+          badges: true,
+          orders: true,
+          favorites: true,
         },
       },
     },
