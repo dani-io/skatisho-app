@@ -8,6 +8,7 @@ import Link from "next/link";
 import {
   MessageSquare,
   Tag,
+  BarChart3,
   LayoutDashboard,
   Users,
   BookOpen,
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { href: "/admin/products", label: "فروشگاه", icon: ShoppingBag },
   { href: "/admin/tickets", label: "تیکت‌ها", icon: MessageSquare },
   { href: "/admin/coupons", label: "کدهای تخفیف", icon: Tag },
+  { href: "/admin/analytics", label: "گزارشات", icon: BarChart3 },
 ];
 
 export default function AdminLayout({
