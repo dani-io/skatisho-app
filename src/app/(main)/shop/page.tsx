@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowRight, ShoppingBag, Tag } from "lucide-react";
+import { ArrowRight, ShoppingBag, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { formatPrice, toPersianDigits, cn } from "@/lib/utils";
+import { useCartStore } from "@/store/cart";
 
 interface Product {
   id: string;
@@ -54,11 +55,16 @@ export default function ShopPage() {
   return (
     <div className="px-4 pt-6">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <Link href="/">
-          <ArrowRight className="w-6 h-6" />
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <Link href="/">
+            <ArrowRight className="w-6 h-6" />
+          </Link>
+          <h1 className="text-lg font-bold">فروشگاه اسکیت</h1>
+        </div>
+        <Link href="/cart" className="relative">
+          <ShoppingCart className="w-6 h-6" />
         </Link>
-        <h1 className="text-lg font-bold">فروشگاه اسکیت</h1>
       </div>
 
       {/* Categories */}
@@ -98,7 +104,8 @@ export default function ShopPage() {
               : 0;
 
             return (
-              <div
+              <Link
+                href={`/shop/${product.id}`}
                 key={product.id}
                 className="bg-white border border-surface-container rounded-[var(--radius-card)] overflow-hidden"
               >
@@ -143,7 +150,7 @@ export default function ShopPage() {
                     )}
                   </div>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>
