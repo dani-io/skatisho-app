@@ -7,6 +7,7 @@ useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   MessageSquare,
+  Tag,
   LayoutDashboard,
   Users,
   BookOpen,
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
   { href: "/admin/subscriptions", label: "اشتراک‌ها", icon: Crown },
   { href: "/admin/products", label: "فروشگاه", icon: ShoppingBag },
   { href: "/admin/tickets", label: "تیکت‌ها", icon: MessageSquare },
+  { href: "/admin/coupons", label: "کدهای تخفیف", icon: Tag },
 ];
 
 export default function AdminLayout({
