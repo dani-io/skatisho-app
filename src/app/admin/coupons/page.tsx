@@ -176,6 +176,23 @@ export default function AdminCouponsPage() {
               </div>
             </div>
             <div>
+            <div>
+              <label className="text-[11px] text-on-surface-muted mb-1 block">قابل استفاده در</label>
+              <div className="flex gap-2">
+                {[
+                  { id: "ALL", label: "همه" },
+                  { id: "SUBSCRIPTION", label: "اشتراک" },
+                  { id: "SHOP", label: "فروشگاه" },
+                ].map((s) => (
+                  <button key={s.id} onClick={() => setScope(s.id)}
+                    className={`flex-1 py-2 rounded-xl text-xs font-medium border-2 transition-colors ${
+                      scope === s.id ? "border-primary bg-primary/5" : "border-surface-container"
+                    }`}>
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
               <label className="text-[11px] text-on-surface-muted mb-1 block">توضیحات</label>
               <input type="text" value={description} onChange={(e) => setDescription(e.target.value)}
                 placeholder="مثلاً: تخفیف ویژه افتتاحیه"
