@@ -103,7 +103,7 @@ export default function CoursesPage() {
       {filtered.length > 0 ? (
         <div className="space-y-4">
           {filtered.map((course) => (
-            <CourseCard key={course.id} course={course} />
+            <CourseCard key={course.id} {...course} />
           ))}
         </div>
       ) : (
