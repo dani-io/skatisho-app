@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -19,12 +18,11 @@ import {
   Star,
   X,
   Save,
-  Ruler,
-  Weight,
-  Cake,
-  Heart,
-  Package, ShoppingBag,
+  Package,
+  ShoppingBag,
   TrendingUp,
+  Gift,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toPersianDigits, formatPrice } from "@/lib/utils";
@@ -119,6 +117,9 @@ export default function ProfilePage() {
   const [addrAddress, setAddrAddress] = useState("");
   const [addrPostal, setAddrPostal] = useState("");
   const [addrPhone, setAddrPhone] = useState("");
+  const [giftCode, setGiftCode] = useState("");
+  const [giftLoading, setGiftLoading] = useState(false);
+  const [giftMsg, setGiftMsg] = useState<{ok:boolean;text:string}|null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -190,6 +191,27 @@ export default function ProfilePage() {
     setAddresses((prev) => prev.filter((a) => a.id !== id));
   }
 
+  async function redeemGift() {
+    if (!giftCode.trim()) return;
+    setGiftLoading(true); setGiftMsg(null);
+    try {
+      const res = await fetch("/api/gift-cards/redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: giftCode }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setGiftMsg({ ok: true, text: `${data.amount.toLocaleString()} تومان به کیف پول اضافه شد` });
+        setGiftCode("");
+        setUser((prev: any) => prev ? { ...prev, walletBalance: data.newBalance } : prev);
+      } else {
+        setGiftMsg({ ok: false, text: data.error });
+      }
+    } catch { setGiftMsg({ ok: false, text: "خطا در شارژ کارت" }); }
+    finally { setGiftLoading(false); }
+  }
+  
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
@@ -349,13 +371,34 @@ export default function ProfilePage() {
         )}
       </div>
 
+      {/* Wallet + Gift Card */}
+      <div className="bg-white rounded-[var(--radius-card)] border border-surface-container p-4 mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold">کیف پول</h3>
+          <span className="text-lg font-bold text-primary">{formatPrice(user.walletBalance)}</span>
+        </div>
+        <div className="border-t border-surface-container pt-3">
+          <p className="text-xs text-on-surface-muted mb-2">کارت هدیه دارید؟ کد رو وارد کنید:</p>
+          <div className="flex gap-2">
+            <input type="text" placeholder="کد کارت هدیه" value={giftCode}
+              onChange={(e) => { setGiftCode(e.target.value.toUpperCase()); setGiftMsg(null); }}
+              dir="ltr"
+              className="flex-1 border border-surface-container rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+            <Button variant="secondary" onClick={redeemGift} disabled={giftLoading || !giftCode.trim()}>
+              {giftLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Gift className="w-4 h-4 ml-1" />شارژ</>}
+            </Button>
+          </div>
+          {giftMsg && (
+            <p className={`text-xs mt-2 ${giftMsg.ok ? "text-green-600" : "text-error"}`}>{giftMsg.text}</p>
+          )}
+        </div>
+      </div>
       {/* Menu */}
       <div className="bg-white rounded-[var(--radius-card)] border border-surface-container mb-4">
         {[
           { label: "خرید اشتراک", icon: Crown, href: "/subscription" },
-          { label: "فروشگاه", icon: Package, ShoppingBag, href: "/shop" },
+          { label: "فروشگاه", icon: Package, href: "/shop" },
           { label: "سفارشات من", icon: Package, href: "/orders" },
-          { label: "کیف پول", icon: TrendingUp, href: "/wallet" },
           { label: "معرفی به دوستان", icon: Share2, href: "/referral" },
           { label: "سوالات متداول", icon: HelpCircle, href: "/faq" },
         ].map((item) => (

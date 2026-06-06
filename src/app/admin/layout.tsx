@@ -8,6 +8,7 @@ import Link from "next/link";
 import {
   MessageSquare,
   Tag,
+  Gift,
   BarChart3,
   Package,
   LayoutDashboard,
@@ -30,6 +31,7 @@ const NAV_ITEMS = [
   { href: "/admin/products", label: "فروشگاه", icon: ShoppingBag },
   { href: "/admin/tickets", label: "تیکت‌ها", icon: MessageSquare },
   { href: "/admin/coupons", label: "کدهای تخفیف", icon: Tag },
+  { href: "/admin/gift-cards", label: "کارت هدیه", icon: Gift },
   { href: "/admin/orders", label: "سفارشات", icon: Package },
   { href: "/admin/analytics", label: "گزارشات", icon: BarChart3 },
 ];

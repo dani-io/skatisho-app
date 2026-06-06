@@ -412,3 +412,18 @@ enum CouponScope {
   SUBSCRIPTION
   SHOP
 }
+
+// ==================== GIFT CARDS ====================
+model GiftCard {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  amount    Int
+  scope     CouponScope @default(ALL)
+  isUsed    Boolean   @default(false)
+  usedBy    String?
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+
+  @@map("gift_cards")
+}
