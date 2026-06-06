@@ -22,6 +22,8 @@ export async function POST(req: NextRequest) {
       inStock: body.inStock ?? true,
       isPublished: body.isPublished ?? true,
       order: body.order || 0,
+      customizable: body.customizable || false,
+      options: body.options || null,
     },
   });
   return NextResponse.json({ product });

@@ -1,9 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Edit, X, Save, Package } from "lucide-react";
+import {
+  Plus, Trash2, Edit, X, Save, Package, Settings, Palette, ChevronDown, ChevronUp,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatPrice, toPersianDigits } from "@/lib/utils";
+
+interface OptionValue {
+  label: string;
+  color?: string;
+  priceAdjust: number;
+}
+
+interface ProductOption {
+  name: string;
+  type: "color" | "select";
+  values: OptionValue[];
+}
 
 interface Product {
   id: string;
@@ -15,6 +29,8 @@ interface Product {
   brand: string | null;
   inStock: boolean;
   isPublished: boolean;
+  customizable: boolean;
+  options: ProductOption[] | null;
 }
 
 const categoryOptions = [
@@ -26,9 +42,10 @@ const categoryOptions = [
   { value: "ACCESSORIES", label: "لوازم جانبی" },
 ];
 
-const emptyProduct = {
+const emptyForm = {
   title: "", description: "", price: 0, originalPrice: 0,
   category: "INLINE_SKATE", brand: "", inStock: true, isPublished: true,
+  customizable: false, options: [] as ProductOption[],
 };
 
 export default function AdminProductsPage() {
@@ -36,17 +53,22 @@ export default function AdminProductsPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
-  const [form, setForm] = useState(emptyProduct);
+  const [form, setForm] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    loadProducts();
+  }, []);
+
+  function loadProducts() {
     fetch("/api/admin/products")
       .then((r) => r.json())
       .then((d) => setProducts(d.products || []))
       .finally(() => setLoading(false));
-  }, []);
+  }
 
   function openNew() {
-    setForm(emptyProduct);
+    setForm(emptyForm);
     setEditing(null);
     setShowForm(true);
   }
@@ -61,36 +83,109 @@ export default function AdminProductsPage() {
       brand: p.brand || "",
       inStock: p.inStock,
       isPublished: p.isPublished,
+      customizable: p.customizable || false,
+      options: p.options || [],
     });
     setEditing(p.id);
     setShowForm(true);
   }
 
   async function handleSave() {
-    if (editing) {
-      const res = await fetch("/api/admin/products", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editing, ...form, originalPrice: form.originalPrice || null }),
-      });
-      const { product } = await res.json();
-      setProducts((prev) => prev.map((p) => (p.id === editing ? product : p)));
-    } else {
-      const res = await fetch("/api/admin/products", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, originalPrice: form.originalPrice || null }),
-      });
-      const { product } = await res.json();
-      setProducts((prev) => [...prev, product]);
+    setSaving(true);
+    try {
+      const payload = {
+        ...form,
+        originalPrice: form.originalPrice || null,
+        options: form.customizable && form.options.length > 0 ? form.options : null,
+      };
+
+      if (editing) {
+        const res = await fetch("/api/admin/products", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: editing, ...payload }),
+        });
+        const { product } = await res.json();
+        setProducts((prev) => prev.map((p) => (p.id === editing ? product : p)));
+      } else {
+        const res = await fetch("/api/admin/products", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const { product } = await res.json();
+        setProducts((prev) => [...prev, product]);
+      }
+      setShowForm(false);
+    } finally {
+      setSaving(false);
     }
-    setShowForm(false);
   }
 
   async function handleDelete(id: string) {
     if (!confirm("محصول حذف شود؟")) return;
     await fetch(`/api/admin/products?id=${id}`, { method: "DELETE" });
     setProducts((prev) => prev.filter((p) => p.id !== id));
+  }
+
+  // Option management helpers
+  function addOptionGroup() {
+    setForm((f) => ({
+      ...f,
+      options: [...f.options, { name: "", type: "select", values: [] }],
+    }));
+  }
+
+  function updateOptionGroup(index: number, field: string, value: any) {
+    setForm((f) => ({
+      ...f,
+      options: f.options.map((o, i) => (i === index ? { ...o, [field]: value } : o)),
+    }));
+  }
+
+  function removeOptionGroup(index: number) {
+    setForm((f) => ({
+      ...f,
+      options: f.options.filter((_, i) => i !== index),
+    }));
+  }
+
+  function addOptionValue(groupIndex: number) {
+    setForm((f) => ({
+      ...f,
+      options: f.options.map((o, i) =>
+        i === groupIndex
+          ? { ...o, values: [...o.values, { label: "", color: "#000000", priceAdjust: 0 }] }
+          : o
+      ),
+    }));
+  }
+
+  function updateOptionValue(groupIndex: number, valueIndex: number, field: string, val: any) {
+    setForm((f) => ({
+      ...f,
+      options: f.options.map((o, i) =>
+        i === groupIndex
+          ? {
+              ...o,
+              values: o.values.map((v, j) =>
+                j === valueIndex ? { ...v, [field]: val } : v
+              ),
+            }
+          : o
+      ),
+    }));
+  }
+
+  function removeOptionValue(groupIndex: number, valueIndex: number) {
+    setForm((f) => ({
+      ...f,
+      options: f.options.map((o, i) =>
+        i === groupIndex
+          ? { ...o, values: o.values.filter((_, j) => j !== valueIndex) }
+          : o
+      ),
+    }));
   }
 
   if (loading) {
@@ -106,20 +201,20 @@ export default function AdminProductsPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold">مدیریت محصولات</h1>
         <Button onClick={openNew}>
-          <Plus className="w-4 h-4 ml-2" />
-          محصول جدید
+          <Plus className="w-4 h-4 ml-2" /> محصول جدید
         </Button>
       </div>
 
       {/* Form Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-[var(--radius-card)] w-full max-w-md max-h-[90vh] overflow-y-auto p-5">
+          <div className="bg-white rounded-[var(--radius-card)] w-full max-w-lg max-h-[90vh] overflow-y-auto p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-bold">{editing ? "ویرایش محصول" : "محصول جدید"}</h2>
               <button onClick={() => setShowForm(false)}><X className="w-5 h-5" /></button>
             </div>
             <div className="space-y-3">
+              {/* Basic Fields */}
               <div>
                 <label className="block text-xs font-medium mb-1">عنوان</label>
                 <input className="w-full h-10 px-3 text-sm border border-surface-container rounded-lg focus:border-primary focus:outline-none"
@@ -157,18 +252,91 @@ export default function AdminProductsPage() {
                 </div>
               </div>
               <div className="flex gap-4">
-                <label className="flex items-center gap-1 text-sm">
+                <label className="flex items-center gap-1.5 text-sm">
                   <input type="checkbox" checked={form.inStock} onChange={(e) => setForm({ ...form, inStock: e.target.checked })} className="accent-primary" />
                   موجود
                 </label>
-                <label className="flex items-center gap-1 text-sm">
+                <label className="flex items-center gap-1.5 text-sm">
                   <input type="checkbox" checked={form.isPublished} onChange={(e) => setForm({ ...form, isPublished: e.target.checked })} className="accent-primary" />
                   منتشر
                 </label>
               </div>
-              <Button size="full" onClick={handleSave}>
+
+              {/* Customization Section */}
+              <div className="border-t border-surface-container pt-3 mt-3">
+                <label className="flex items-center justify-between cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <Settings className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-bold">محصول سفارشی</span>
+                  </div>
+                  <div className={`w-11 h-6 rounded-full transition-colors relative ${form.customizable ? "bg-primary" : "bg-gray-300"}`}
+                    onClick={() => setForm({ ...form, customizable: !form.customizable })}>
+                    <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${form.customizable ? "left-5" : "left-0.5"}`} />
+                  </div>
+                </label>
+                <p className="text-[11px] text-on-surface-muted mt-1">کاربر بتونه رنگ، سایز، چرخ و ... انتخاب کنه</p>
+              </div>
+
+              {form.customizable && (
+                <div className="space-y-4 bg-surface-dim rounded-xl p-4">
+                  {form.options.map((opt, gi) => (
+                    <div key={gi} className="bg-white rounded-xl p-3 border border-surface-container">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold text-on-surface-muted">گزینه {toPersianDigits(gi + 1)}</span>
+                        <button onClick={() => removeOptionGroup(gi)} className="text-red-500">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 mb-3">
+                        <input placeholder="نام (مثلاً: رنگ)" value={opt.name}
+                          onChange={(e) => updateOptionGroup(gi, "name", e.target.value)}
+                          className="h-9 px-3 text-xs border border-surface-container rounded-lg focus:border-primary focus:outline-none" />
+                        <select value={opt.type} onChange={(e) => updateOptionGroup(gi, "type", e.target.value)}
+                          className="h-9 px-3 text-xs border border-surface-container rounded-lg">
+                          <option value="select">انتخابی</option>
+                          <option value="color">رنگ</option>
+                        </select>
+                      </div>
+
+                      {/* Values */}
+                      <div className="space-y-2">
+                        {opt.values.map((val, vi) => (
+                          <div key={vi} className="flex items-center gap-2">
+                            {opt.type === "color" && (
+                              <input type="color" value={val.color || "#000000"}
+                                onChange={(e) => updateOptionValue(gi, vi, "color", e.target.value)}
+                                className="w-8 h-8 rounded border-0 cursor-pointer" />
+                            )}
+                            <input placeholder="عنوان" value={val.label}
+                              onChange={(e) => updateOptionValue(gi, vi, "label", e.target.value)}
+                              className="flex-1 h-8 px-2 text-xs border border-surface-container rounded-lg focus:border-primary focus:outline-none" />
+                            <input type="number" placeholder="+ قیمت" value={val.priceAdjust || ""}
+                              onChange={(e) => updateOptionValue(gi, vi, "priceAdjust", parseInt(e.target.value) || 0)}
+                              className="w-24 h-8 px-2 text-xs border border-surface-container rounded-lg focus:border-primary focus:outline-none" />
+                            <button onClick={() => removeOptionValue(gi, vi)} className="text-red-400">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                        <button onClick={() => addOptionValue(gi)}
+                          className="flex items-center gap-1 text-[11px] text-primary font-medium mt-1">
+                          <Plus className="w-3 h-3" /> افزودن مقدار
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  <button onClick={addOptionGroup}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-primary/30 rounded-xl text-xs text-primary font-medium hover:bg-primary/5 transition-colors">
+                    <Plus className="w-4 h-4" /> افزودن گزینه جدید (رنگ، سایز، ...)
+                  </button>
+                </div>
+              )}
+
+              <Button size="full" onClick={handleSave} disabled={!form.title || !form.price || saving}>
                 <Save className="w-4 h-4 ml-2" />
-                {editing ? "ذخیره تغییرات" : "افزودن محصول"}
+                {saving ? "ذخیره..." : editing ? "ذخیره تغییرات" : "افزودن محصول"}
               </Button>
             </div>
           </div>
@@ -191,8 +359,17 @@ export default function AdminProductsPage() {
             {products.map((p) => (
               <tr key={p.id} className="hover:bg-surface-dim/50">
                 <td className="p-3">
-                  <p className="font-medium">{p.title}</p>
-                  {p.brand && <p className="text-xs text-on-surface-muted">{p.brand}</p>}
+                  <div className="flex items-center gap-2">
+                    <div>
+                      <p className="font-medium">{p.title}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {p.brand && <span className="text-[10px] text-on-surface-muted">{p.brand}</span>}
+                        {p.customizable && (
+                          <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">سفارشی</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </td>
                 <td className="p-3 text-xs">{categoryOptions.find((o) => o.value === p.category)?.label}</td>
                 <td className="p-3">{formatPrice(p.price)}</td>
