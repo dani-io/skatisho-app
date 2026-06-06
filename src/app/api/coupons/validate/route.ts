@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const { code, amount } = await req.json();
+  const { code, amount, scope } = await req.json();
 
   if (!code?.trim()) {
     return NextResponse.json({ error: "کد تخفیف را وارد کنید" }, { status: 400 });
@@ -37,6 +37,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "شما قبلاً از این کد استفاده کرده‌اید" }, { status: 400 });
   }
 
+  // Check scope
+  if (scope && coupon.scope !== "ALL" && coupon.scope !== scope) {
+    return NextResponse.json({ error: scope === "SUBSCRIPTION" ? "این کد فقط برای فروشگاه قابل استفاده است" : "این کد فقط برای اشتراک قابل استفاده است" }, { status: 400 });
+  }
   if (coupon.minAmount && amount < coupon.minAmount) {
     return NextResponse.json({
       error: `حداقل مبلغ سفارش برای این کد ${coupon.minAmount.toLocaleString()} تومان است`,

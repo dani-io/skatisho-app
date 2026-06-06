@@ -39,6 +39,7 @@ export default function AdminCouponsPage() {
   const [usageLimit, setUsageLimit] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
   const [description, setDescription] = useState("");
+  const [scope, setScope] = useState("ALL");
 
   useEffect(() => { loadCoupons(); }, []);
 
@@ -57,7 +58,7 @@ export default function AdminCouponsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          code, type, value, minAmount, maxDiscount, usageLimit, expiresAt, description,
+          code, type, value, minAmount, maxDiscount, usageLimit, expiresAt, description, scope,
         }),
       });
       if (res.ok) {
@@ -80,7 +81,7 @@ export default function AdminCouponsPage() {
 
   function resetForm() {
     setCode(""); setValue(""); setMinAmount(""); setMaxDiscount("");
-    setUsageLimit(""); setExpiresAt(""); setDescription(""); setType("PERCENT");
+    setUsageLimit(""); setExpiresAt(""); setDescription(""); setType("PERCENT"); setScope("ALL");
   }
 
   function copyCode(couponCode: string, id: string) {

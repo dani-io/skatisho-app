@@ -383,6 +383,7 @@ model Coupon {
   expiresAt     DateTime?
   isActive      Boolean   @default(true)
   description   String?
+  scope         CouponScope  @default(ALL)
   createdAt     DateTime  @default(now())
   usages        CouponUsage[]
 
@@ -404,4 +405,10 @@ model CouponUsage {
 enum CouponType {
   PERCENT
   FIXED
+}
+
+enum CouponScope {
+  ALL
+  SUBSCRIPTION
+  SHOP
 }
