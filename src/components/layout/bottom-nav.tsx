@@ -2,14 +2,15 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Home, Wallet, MessageSquare, User } from "lucide-react";
+import { Home, GraduationCap, ShoppingBag, MessageSquare, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const tabs = [
-  { href: "/", label: "خانه", icon: Home },
-  { href: "/wallet", label: "کیف پول", icon: Wallet },
-  { href: "/tickets", label: "پشتیبانی", icon: MessageSquare },
   { href: "/profile", label: "پروفایل", icon: User },
+  { href: "/tickets", label: "پشتیبانی", icon: MessageSquare },
+  { href: "/shop", label: "فروشگاه", icon: ShoppingBag },
+  { href: "/courses", label: "آکادمی", icon: GraduationCap },
+  { href: "/", label: "خانه", icon: Home },
 ];
 
 export function BottomNav() {
