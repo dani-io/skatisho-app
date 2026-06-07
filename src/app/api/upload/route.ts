@@ -1,3 +1,4 @@
+export const config = { api: { bodyParser: false } };
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { uploadFile } from "@/lib/s3";
