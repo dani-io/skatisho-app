@@ -98,7 +98,7 @@ export function VideoPlayer({ src, poster, onEnded, onProgress }: VideoPlayerPro
     const rect = bar.getBoundingClientRect();
     const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
     // RTL: calculate from right
-    const ratio = (rect.right - clientX) / rect.width;
+    const ratio = (clientX - rect.left) / rect.width;
     const clamped = Math.max(0, Math.min(1, ratio));
     v.currentTime = clamped * v.duration;
     setCurrentTime(v.currentTime);
@@ -133,7 +133,7 @@ export function VideoPlayer({ src, poster, onEnded, onProgress }: VideoPlayerPro
   return (
     <div
       ref={containerRef}
-      className="relative bg-black aspect-video select-none group"
+      className="relative bg-black aspect-video select-none group rounded-2xl overflow-hidden"
       onClick={togglePlay}
       onMouseMove={resetHideTimer}
       onTouchStart={resetHideTimer}
@@ -176,18 +176,18 @@ export function VideoPlayer({ src, poster, onEnded, onProgress }: VideoPlayerPro
           <div className="w-full h-1 bg-white/20 rounded-full relative">
             {/* Buffered */}
             <div
-              className="absolute top-0 right-0 h-full bg-white/30 rounded-full"
+              className="absolute top-0 left-0 h-full bg-white/30 rounded-full"
               style={{ width: `${bufferProgress}%` }}
             />
             {/* Progress */}
             <div
-              className="absolute top-0 right-0 h-full bg-primary rounded-full"
+              className="absolute top-0 left-0 h-full bg-primary rounded-full"
               style={{ width: `${progress}%` }}
             />
             {/* Thumb */}
             <div
               className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-primary rounded-full shadow"
-              style={{ right: `calc(${progress}% - 6px)` }}
+              style={{ left: `calc(${progress}% - 6px)` }}
             />
           </div>
         </div>

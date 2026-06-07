@@ -92,7 +92,7 @@ export default function LessonPage() {
   }
 
   return (
-    <div className="pb-24">
+    <div className="pb-24 pt-4 px-4">
       {/* Video Player */}
       <VideoPlayer
         src={lesson.videoUrl}
