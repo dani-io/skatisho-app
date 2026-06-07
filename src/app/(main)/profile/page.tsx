@@ -31,6 +31,7 @@ interface UserData {
   id: string;
   phone: string;
   name: string | null;
+  avatar: string | null;
   skillLevel: string | null;
   goal: string | null;
   birthDate: string | null;
@@ -233,10 +234,32 @@ export default function ProfilePage() {
     <div className="px-4 pb-24">
       {/* Avatar & Name */}
       <div className="flex flex-col items-center pt-8 pb-4">
-        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-3">
-          <span className="text-3xl font-bold text-primary">
-            {user.name?.charAt(0) || "؟"}
-          </span>
+        <div className="relative">
+          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-3 overflow-hidden">
+            {user.avatar ? (
+              <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-3xl font-bold text-primary">
+                {user.name?.charAt(0) || "؟"}
+              </span>
+            )}
+          </div>
+          <label className="absolute bottom-2 right-0 w-7 h-7 bg-primary rounded-full flex items-center justify-center cursor-pointer shadow-md">
+            <Edit3 className="w-3.5 h-3.5 text-white" />
+            <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const fd = new FormData();
+                fd.append("file", file);
+                const res = await fetch("/api/auth/avatar", { method: "POST", body: fd });
+                const data = await res.json();
+                if (data.avatar) {
+                  setUser((prev: any) => prev ? { ...prev, avatar: data.avatar } : prev);
+                }
+              }}
+            />
+          </label>
         </div>
         <h2 className="font-bold text-lg">{user.name || "کاربر اسکیتی‌شو"}</h2>
         <p className="text-sm text-on-surface-muted mt-0.5" dir="ltr">

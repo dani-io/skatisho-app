@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { serverFileUrl } from "@/lib/storage";
 
 export async function GET() {
   const session = await getSession();
@@ -47,5 +48,5 @@ export async function GET() {
     return NextResponse.json({ user: null }, { status: 401 });
   }
 
-  return NextResponse.json({ user });
+  return NextResponse.json({ user: { ...user, avatar: serverFileUrl(user.avatar) } });
 }
