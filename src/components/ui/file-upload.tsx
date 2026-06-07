@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { Upload, X, Loader2, Image, Film, CheckCircle } from "lucide-react";
+import { fileUrl } from "@/lib/storage";
 
 interface FileUploadProps {
   label: string;
@@ -53,7 +54,8 @@ export function FileUpload({ label, accept, folder, value, onChange, onClear }: 
       }
 
       setProgress(100);
-      onChange(data.url);
+      onChange(data.key);
+
     } catch {
       setError("خطا در آپلود فایل");
     } finally {
@@ -72,11 +74,11 @@ export function FileUpload({ label, accept, folder, value, onChange, onClear }: 
       {value ? (
         <div className="relative border border-surface-container rounded-xl overflow-hidden">
           {accept === "image" ? (
-            <img src={value} alt="" className="w-full h-32 object-cover" />
+            <img src={fileUrl(value)} alt="" className="w-full h-32 object-cover" />
           ) : (
             <div className="flex items-center gap-3 p-3 bg-surface-dim">
               <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />
-              <p className="text-xs text-on-surface-muted truncate flex-1" dir="ltr">{value.split("/").pop()}</p>
+              <p className="text-xs text-on-surface-muted truncate flex-1" dir="ltr">{(value || "").split("/").pop()}</p>
             </div>
           )}
           {onClear && (

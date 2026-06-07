@@ -25,8 +25,7 @@ export async function uploadFile(
       ContentType: contentType,
     })
   );
-
-  return `${process.env.S3_ENDPOINT}/${BUCKET}/${key}`;
+  return key;
 }
 
 export async function deleteFile(key: string): Promise<void> {
