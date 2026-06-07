@@ -23,6 +23,8 @@ import {
   TrendingUp,
   Gift,
   Loader2,
+  BookmarkCheck,
+  StickyNote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toPersianDigits, formatPrice } from "@/lib/utils";
@@ -32,6 +34,7 @@ interface UserData {
   phone: string;
   name: string | null;
   avatar: string | null;
+  
   skillLevel: string | null;
   goal: string | null;
   birthDate: string | null;
@@ -94,6 +97,40 @@ function profileCompletion(user: UserData): number {
   fields.forEach((f) => { if (f) filled++; });
   return Math.round((filled / fields.length) * 100);
 }
+
+function BookmarksList() {
+  const [bookmarks, setBookmarks] = useState<any[]>([]);
+  const [loadingBm, setLoadingBm] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/bookmarks")
+      .then((r) => r.json())
+      .then((data) => setBookmarks(data.bookmarks || []))
+      .finally(() => setLoadingBm(false));
+  }, []);
+
+  if (loadingBm) return <div className="py-4 text-center"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" /></div>;
+
+  if (bookmarks.length === 0) return <p className="text-xs text-on-surface-muted text-center py-4">درسی نشان نشده</p>;
+
+  return (
+    <div className="space-y-2">
+      {bookmarks.map((bm: any) => (
+        <a key={bm.id} href={`/courses/${bm.lesson.chapter.course.id}/${bm.lessonId}`}
+          className="flex items-center gap-3 p-2 rounded-xl hover:bg-surface-dim transition-colors">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <BookmarkCheck className="w-4 h-4 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium truncate">{bm.lesson.title}</p>
+            <p className="text-[10px] text-on-surface-muted truncate">{bm.lesson.chapter.course.title} — {bm.lesson.chapter.title}</p>
+          </div>
+          {bm.note && <StickyNote className="w-3 h-3 text-primary shrink-0" />}
+        </a>
+      ))}
+    </div>
+  );
+} 
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -392,6 +429,11 @@ export default function ProfilePage() {
         ) : (
           <p className="text-xs text-on-surface-muted text-center py-4">آدرسی ثبت نشده</p>
         )}
+      </div>
+      {/* Bookmarks */}
+      <div className="bg-white rounded-[var(--radius-card)] border border-surface-container p-4 mb-4">
+        <h3 className="text-sm font-bold mb-3">نشان‌شده‌ها</h3>
+        <BookmarksList />
       </div>
 
       {/* Wallet + Gift Card */}
