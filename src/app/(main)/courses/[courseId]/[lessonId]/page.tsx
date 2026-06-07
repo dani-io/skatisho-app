@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowRight, CheckCircle2, ChevronLeft, ChevronRight, Bookmark, BookmarkCheck, StickyNote, Send } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Bookmark,
+  BookmarkCheck,
+  StickyNote,
+  Send,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VideoPlayer } from "@/components/player/video-player";
 
@@ -28,12 +35,35 @@ export default function LessonPage() {
   const [showNote, setShowNote] = useState(false);
   const [savingNote, setSavingNote] = useState(false);
 
+  // Load lesson
+  useEffect(() => {
+    fetch(`/api/courses/${courseId}/lessons/${lessonId}`)
+      .then((r) => {
+        if (r.status === 403) {
+          setError("برای مشاهده این درس، اشتراک فعال نیاز دارید");
+          setLoading(false);
+          return null;
+        }
+        return r.json();
+      })
+      .then((data) => {
+        if (data) {
+          setLesson(data.lesson);
+          setCompleted(data.completed);
+        }
+      })
+      .finally(() => setLoading(false));
+  }, [courseId, lessonId]);
+
+  // Load bookmark status
   useEffect(() => {
     if (!lessonId) return;
     fetch("/api/bookmarks")
       .then((r) => r.json())
       .then((data) => {
-        const bm = (data.bookmarks || []).find((b: any) => b.lessonId === lessonId);
+        const bm = (data.bookmarks || []).find(
+          (b: any) => b.lessonId === lessonId
+        );
         if (bm) {
           setBookmarked(true);
           setNote(bm.note || "");
@@ -50,10 +80,14 @@ export default function LessonPage() {
     });
     const data = await res.json();
     setBookmarked(data.action !== "removed");
-    if (data.action === "removed") { setNote(""); setSavedNote(""); setShowNote(false); }
+    if (data.action === "removed") {
+      setNote("");
+      setSavedNote("");
+      setShowNote(false);
+    }
   }
 
-  async function saveNote() {
+  async function saveNoteHandler() {
     setSavingNote(true);
     try {
       await fetch("/api/bookmarks", {
@@ -63,9 +97,12 @@ export default function LessonPage() {
       });
       setSavedNote(note);
       if (!bookmarked) setBookmarked(true);
-    } finally { setSavingNote(false); }
+    } finally {
+      setSavingNote(false);
+    }
   }
-async function markComplete() {
+
+  async function markComplete() {
     await fetch(`/api/courses/${courseId}/lessons/${lessonId}/progress`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -81,6 +118,7 @@ async function markComplete() {
       body: JSON.stringify({ watchedSec: seconds }),
     });
   }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -96,7 +134,10 @@ async function markComplete() {
         <Button onClick={() => router.push("/subscription")}>
           خرید اشتراک
         </Button>
-        <Button variant="ghost" onClick={() => router.push(`/courses/${courseId}`)}>
+        <Button
+          variant="ghost"
+          onClick={() => router.push(`/courses/${courseId}`)}
+        >
           بازگشت به دوره
         </Button>
       </div>
@@ -144,19 +185,32 @@ async function markComplete() {
             <CheckCircle2 className="w-6 h-6 text-success shrink-0 mt-1" />
           )}
         </div>
-{/* Bookmark & Note */}
+
+        {/* Bookmark & Note */}
         <div className="flex items-center gap-2 mt-3">
-          <button onClick={toggleBookmark}
+          <button
+            onClick={toggleBookmark}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ${
-              bookmarked ? "border-primary bg-primary/5 text-primary" : "border-surface-container text-on-surface-muted"
-            }`}>
-            {bookmarked ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
+              bookmarked
+                ? "border-primary bg-primary/5 text-primary"
+                : "border-surface-container text-on-surface-muted"
+            }`}
+          >
+            {bookmarked ? (
+              <BookmarkCheck className="w-4 h-4" />
+            ) : (
+              <Bookmark className="w-4 h-4" />
+            )}
             {bookmarked ? "نشان شده" : "نشان کردن"}
           </button>
-          <button onClick={() => setShowNote(!showNote)}
+          <button
+            onClick={() => setShowNote(!showNote)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ${
-              showNote || savedNote ? "border-primary bg-primary/5 text-primary" : "border-surface-container text-on-surface-muted"
-            }`}>
+              showNote || savedNote
+                ? "border-primary bg-primary/5 text-primary"
+                : "border-surface-container text-on-surface-muted"
+            }`}
+          >
             <StickyNote className="w-4 h-4" />
             یادداشت
           </button>
@@ -173,14 +227,30 @@ async function markComplete() {
             />
             <div className="flex items-center justify-between mt-2">
               <span className="text-[10px] text-on-surface-muted">
-                {note !== savedNote ? "ذخیره نشده" : note ? "ذخیره شده ✓" : ""}
+                {note !== savedNote
+                  ? "ذخیره نشده"
+                  : note
+                  ? "ذخیره شده ✓"
+                  : ""}
               </span>
-              <Button variant="secondary" onClick={saveNote} disabled={savingNote || note === savedNote}>
-                {savingNote ? "..." : <><Send className="w-3 h-3 ml-1" />ذخیره</>}
+              <Button
+                variant="secondary"
+                onClick={saveNoteHandler}
+                disabled={savingNote || note === savedNote}
+              >
+                {savingNote ? (
+                  "..."
+                ) : (
+                  <>
+                    <Send className="w-3 h-3 ml-1" />
+                    ذخیره
+                  </>
+                )}
               </Button>
             </div>
           </div>
         )}
+
         {/* Description */}
         {lesson.description && (
           <p className="mt-4 text-sm text-on-surface-muted leading-relaxed">
@@ -190,11 +260,7 @@ async function markComplete() {
 
         {/* Mark Complete Button */}
         {!completed && (
-          <Button
-            size="full"
-            className="mt-6"
-            onClick={markComplete}
-          >
+          <Button size="full" className="mt-6" onClick={markComplete}>
             تکمیل این درس ✓
           </Button>
         )}
