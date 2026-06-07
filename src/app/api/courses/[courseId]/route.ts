@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { serverFileUrl } from "@/lib/storage";
 
 export async function GET(
   req: NextRequest,
@@ -59,6 +60,8 @@ export async function GET(
   return NextResponse.json({
     course: {
       ...course,
+      thumbnail: serverFileUrl(course.thumbnail),
+      chapters: course.chapters.map((ch: any) => ({ ...ch, lessons: ch.lessons.map((l: any) => ({ ...l, thumbnail: serverFileUrl(l.thumbnail) })) })),
       hasAccess,
       progress,
     },

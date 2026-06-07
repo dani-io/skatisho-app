@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { serverFileUrl } from "@/lib/storage";
 
 export async function GET(
   req: NextRequest,
@@ -47,5 +48,5 @@ export async function GET(
     completed = progress?.completed ?? false;
   }
 
-  return NextResponse.json({ lesson, completed });
+  return NextResponse.json({ lesson: { ...lesson, videoUrl: serverFileUrl(lesson.videoUrl) }, completed });
 }
