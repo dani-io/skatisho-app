@@ -9,6 +9,7 @@ import {
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn, toPersianDigits, formatDuration } from "@/lib/utils";
+import { FileUpload } from "@/components/ui/file-upload";
 
 interface Lesson {
   id: string;
@@ -30,6 +31,7 @@ interface Course {
   id: string;
   title: string;
   description: string | null;
+  thumbnail: string | null;
   category: string;
   level: string;
   coachId: string;
@@ -187,6 +189,14 @@ export default function AdminCourseDetailPage() {
               value={course.description || ""}
               onChange={(e) => setCourse({ ...course, description: e.target.value })}
             />
+            <FileUpload
+            label="تصویر کاور دوره"
+            accept="image"
+            folder="courses/covers"
+            value={course.thumbnail}
+            onChange={(url) => setCourse({ ...course, thumbnail: url })}
+            onClear={() => setCourse({ ...course, thumbnail: null })}
+          />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -294,12 +304,13 @@ export default function AdminCourseDetailPage() {
                         value={newLesson.title}
                         onChange={(e) => setNewLesson({ ...newLesson, title: e.target.value })}
                       />
-                      <input
-                        placeholder="آدرس ویدئو (مثلاً /media/lesson1.mp4)"
-                        dir="ltr"
-                        className="w-full h-9 px-3 text-sm border border-surface-container rounded-lg focus:border-primary focus:outline-none"
-                        value={newLesson.videoUrl}
-                        onChange={(e) => setNewLesson({ ...newLesson, videoUrl: e.target.value })}
+                      <FileUpload
+                        label=""
+                        accept="video"
+                        folder="courses/videos"
+                        value={newLesson.videoUrl || null}
+                        onChange={(url) => setNewLesson({ ...newLesson, videoUrl: url })}
+                        onClear={() => setNewLesson({ ...newLesson, videoUrl: "" })}
                       />
                       <div className="flex gap-2">
                         <input
