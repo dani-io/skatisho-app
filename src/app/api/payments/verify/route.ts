@@ -23,10 +23,15 @@ export async function GET(req: NextRequest) {
   }
 
   const payment = await db.payment.findFirst({
-    where: { id: paymentId },
+    where: { id: paymentId, status: "PENDING" },
   });
 
   if (!payment) {
+    // Already processed or not found
+    const existingPayment = await db.payment.findFirst({ where: { id: paymentId || "" } });
+    if (existingPayment?.status === "SUCCESS") {
+      return NextResponse.redirect(`${origin}/payment/result?status=success`);
+    }
     return NextResponse.redirect(`${origin}/payment/result?status=error`);
   }
 
