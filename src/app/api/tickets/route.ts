@@ -21,7 +21,11 @@ export async function GET() {
     },
   });
 
-  return NextResponse.json({ tickets });
+  const result = tickets.map((t: any) => ({
+    ...t,
+    hasUnread: t.messages.length > 0 && t.messages[0].isAdmin && !t.messages[0].isRead,
+  }));
+  return NextResponse.json({ tickets: result });
 }
 
 // POST: create new ticket
