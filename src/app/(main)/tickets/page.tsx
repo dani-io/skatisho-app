@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   MessageSquare,
   Plus,
@@ -33,7 +33,6 @@ const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof Cl
 
 export default function TicketsPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -44,12 +43,13 @@ export default function TicketsPage() {
   const [lessonId, setLessonId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (searchParams.get("new") === "1") {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("new") === "1") {
       setShowForm(true);
-      setSubject(searchParams.get("subject") || "");
-      setLessonId(searchParams.get("lessonId") || null);
+      setSubject(params.get("subject") || "");
+      setLessonId(params.get("lessonId") || null);
     }
-  }, [searchParams]);
+  }, []);
 
   useEffect(() => {
     loadTickets();
