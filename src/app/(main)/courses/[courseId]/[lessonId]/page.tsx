@@ -254,7 +254,7 @@ export default function LessonPage() {
 
         {/* Support Button */}
         <button
-          onClick={() => router.push(`/tickets/new?lessonId=${lessonId}&subject=${encodeURIComponent("سوال درباره: " + lesson.title)}`)}
+          onClick={() => router.push(`/tickets?new=1&lessonId=${lessonId}&subject=${encodeURIComponent("سوال درباره: " + lesson.title)}`)}
           className="flex items-center gap-2 mt-3 px-3 py-2 rounded-xl text-xs font-medium border border-surface-container text-on-surface-muted hover:border-primary hover:text-primary transition-colors w-full justify-center"
         >
           <MessageSquare className="w-4 h-4" />

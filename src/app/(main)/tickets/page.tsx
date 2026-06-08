@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   MessageSquare,
   Plus,
@@ -33,12 +33,23 @@ const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof Cl
 
 export default function TicketsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+
+  const [lessonId, setLessonId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      setShowForm(true);
+      setSubject(searchParams.get("subject") || "");
+      setLessonId(searchParams.get("lessonId") || null);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     loadTickets();
@@ -58,8 +69,7 @@ export default function TicketsPage() {
       const res = await fetch("/api/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject, message }),
-      });
+        body: JSON.stringify({ subject, message, lessonId }),      });
       if (res.ok) {
         const data = await res.json();
         setShowForm(false);
