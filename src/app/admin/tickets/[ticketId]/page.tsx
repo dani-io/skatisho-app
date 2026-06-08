@@ -26,7 +26,6 @@ interface Ticket {
   user: { name: string | null; phone: string; avatar: string | null };
   messages: Message[];
   lesson?: { id: string; title: string; chapter: { title: string; course: { id: string; title: string } } } | null;
-  lesson?: { id: string; title: string; chapter: { title: string; course: { id: string; title: string } } } | null;
 }
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
