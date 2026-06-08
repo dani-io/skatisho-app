@@ -1,13 +1,13 @@
 "use client";
-
 import { useEffect, useState, useRef, use } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Send, Headphones, User } from "lucide-react";
+import { ArrowRight, Send, Headphones, User, Check, CheckCheck } from "lucide-react";
 
 interface Message {
   id: string;
   content: string;
   isAdmin: boolean;
+  isRead: boolean;
   createdAt: string;
 }
 
@@ -127,7 +127,7 @@ export default function TicketDetailPage({ params }: { params: Promise<{ ticketI
                     day: "numeric",
                   })}
                 </span>
-                {!msg.isAdmin && <User className="w-3 h-3 text-on-surface-muted" />}
+                {!msg.isAdmin && (msg.isRead ? <CheckCheck className="w-3.5 h-3.5 text-blue-500" /> : <Check className="w-3.5 h-3.5 text-on-surface-muted" />)}
               </div>
             </div>
           </div>

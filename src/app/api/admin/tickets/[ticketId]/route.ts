@@ -29,6 +29,11 @@ export async function GET(
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
+  // Mark user messages as read
+  await db.ticketMessage.updateMany({
+    where: { ticketId, isAdmin: false, isRead: false },
+    data: { isRead: true, readAt: new Date() },
+  });
   return NextResponse.json({ ticket });
 }
 
