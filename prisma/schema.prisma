@@ -104,6 +104,7 @@ model Lesson {
 
   progress    LessonProgress[]
   bookmarks   LessonBookmark[]
+  tickets     Ticket[]
 
   @@map("lessons")
 }
@@ -207,6 +208,8 @@ model Ticket {
   userId    String
   user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   subject   String
+  lessonId  String?
+  lesson    Lesson?  @relation(fields: [lessonId], references: [id])
   status    TicketStatus @default(OPEN)
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
@@ -222,6 +225,8 @@ model TicketMessage {
   ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   content   String
   isAdmin   Boolean  @default(false)
+  isRead    Boolean  @default(false)
+  readAt    DateTime?
   createdAt DateTime @default(now())
 
   @@map("ticket_messages")

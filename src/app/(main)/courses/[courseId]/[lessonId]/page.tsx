@@ -9,6 +9,7 @@ import {
   BookmarkCheck,
   StickyNote,
   Send,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VideoPlayer } from "@/components/player/video-player";
@@ -251,6 +252,15 @@ export default function LessonPage() {
           </div>
         )}
 
+        {/* Support Button */}
+        <button
+          onClick={() => router.push(`/tickets/new?lessonId=${lessonId}&subject=${encodeURIComponent("سوال درباره: " + lesson.title)}`)}
+          className="flex items-center gap-2 mt-3 px-3 py-2 rounded-xl text-xs font-medium border border-surface-container text-on-surface-muted hover:border-primary hover:text-primary transition-colors w-full justify-center"
+        >
+          <MessageSquare className="w-4 h-4" />
+          سوال درباره این درس؟ پشتیبانی
+        </button>
+        
         {/* Description */}
         {lesson.description && (
           <p className="mt-4 text-sm text-on-surface-muted leading-relaxed">

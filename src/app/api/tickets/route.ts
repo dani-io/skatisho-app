@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const { subject, message } = await req.json();
+  const { subject, message, lessonId } = await req.json();
 
   if (!subject?.trim() || !message?.trim()) {
     return NextResponse.json({ error: "subject and message required" }, { status: 400 });
@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
     data: {
       userId: session.userId,
       subject: subject.trim(),
+      lessonId: lessonId || null,
       messages: {
         create: {
           content: message.trim(),

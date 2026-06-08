@@ -161,7 +161,7 @@ export default function CourseDetailPage() {
             </div>
           </div>
         )}
-
+        
         {/* Description */}
         {course.description && (
           <p className="mt-4 text-sm text-on-surface-muted leading-relaxed">
