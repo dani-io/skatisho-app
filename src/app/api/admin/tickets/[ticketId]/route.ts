@@ -21,6 +21,7 @@ export async function GET(
     include: {
       user: { select: { name: true, phone: true, avatar: true } },
       messages: { orderBy: { createdAt: "asc" } },
+      lesson: { select: { id: true, title: true, chapter: { select: { title: true, course: { select: { id: true, title: true } } } } } },
     },
   });
 
