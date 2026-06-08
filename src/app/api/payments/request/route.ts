@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { type } = body;
     const url = new URL(req.url);
-    const origin = url.origin;
+    const origin = process.env.APP_URL || url.origin;
 
     let amount = 0;
     let description = "";
