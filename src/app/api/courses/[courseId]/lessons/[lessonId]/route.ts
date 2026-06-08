@@ -7,7 +7,7 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ courseId: string; lessonId: string }> }
 ) {
-  const { lessonId } = await params;
+  const { courseId, lessonId } = await params;
   const session = await getSession();
 
   const lesson = await db.lesson.findUnique({
@@ -25,15 +25,19 @@ export async function GET(
     return NextResponse.json({ error: "درس یافت نشد" }, { status: 404 });
   }
 
-  // Check access
+  // Check access: free lesson OR VIP subscription OR individual purchase
   if (!lesson.isFree && session) {
     const subscription = await db.subscription.findUnique({
       where: { userId: session.userId },
     });
-    const hasAccess =
-      !!subscription?.isActive && new Date(subscription.endDate) > new Date();
-    if (!hasAccess) {
-      return NextResponse.json({ error: "اشتراک فعال ندارید" }, { status: 403 });
+    const hasVIP = !!subscription?.isActive && new Date(subscription.endDate) > new Date();
+
+    const hasPurchased = await db.courseAccess.findUnique({
+      where: { userId_courseId: { userId: session.userId, courseId: courseId as string } },
+    });
+
+    if (!hasVIP && !hasPurchased) {
+      return NextResponse.json({ error: "برای مشاهده این درس، اشتراک VIP یا خرید دوره نیاز دارید" }, { status: 403 });
     }
   }
 

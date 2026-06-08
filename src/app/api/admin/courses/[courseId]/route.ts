@@ -47,6 +47,7 @@ export async function PUT(
       coachId: body.coachId,
       order: body.order,
       isPublished: body.isPublished,
+      price: body.price || null,
     },
   });
 

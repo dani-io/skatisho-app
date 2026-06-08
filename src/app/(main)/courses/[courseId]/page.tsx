@@ -11,7 +11,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn, formatDuration, toPersianDigits } from "@/lib/utils";
+import { cn, formatDuration, toPersianDigits, formatPrice } from "@/lib/utils";
 import Link from "next/link";
 
 interface Lesson {
@@ -39,6 +39,9 @@ interface CourseDetail {
   coach: { name: string; bio: string; avatar: string };
   chapters: Chapter[];
   hasAccess: boolean;
+  hasVIP: boolean;
+  hasPurchased: boolean;
+  price: number | null;
   progress: Record<string, boolean>;
 }
 
@@ -171,16 +174,44 @@ export default function CourseDetailPage() {
 
         {/* Buy CTA (if no access) */}
         {!course.hasAccess && (
-          <div className="mt-4 bg-primary/10 rounded-[var(--radius-card)] p-4">
-            <p className="text-sm font-medium mb-3">
-              برای دسترسی به تمام دروس، اشتراک تهیه کنید
-            </p>
-            <Button
-              size="full"
-              onClick={() => router.push("/subscription")}
-            >
-              خرید اشتراک
-            </Button>
+          <div className="mt-4 space-y-3">
+            {course.price && (
+              <div className="bg-primary/10 rounded-[var(--radius-card)] p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-bold">خرید این دوره</p>
+                  <p className="text-lg font-bold text-primary">{formatPrice(course.price)}</p>
+                </div>
+                <Button
+                  size="full"
+                  onClick={async () => {
+                    const res = await fetch(`/api/courses/${courseId}/purchase`, { method: "POST" });
+                    const data = await res.json();
+                    if (data.success) {
+                      setCourse((prev: any) => prev ? { ...prev, hasAccess: true, hasPurchased: true } : prev);
+                    } else if (res.status === 402) {
+                      alert(`موجودی کافی نیست. نیاز: ${data.needed?.toLocaleString()} تومان — موجودی: ${data.balance?.toLocaleString()} تومان`);
+                      router.push("/profile");
+                    } else {
+                      alert(data.error);
+                    }
+                  }}
+                >
+                  خرید دوره — {formatPrice(course.price)}
+                </Button>
+              </div>
+            )}
+            <div className="bg-surface-dim rounded-[var(--radius-card)] p-4">
+              <p className="text-sm font-medium mb-3">
+                {course.price ? "یا با اشتراک VIP به تمام دوره‌ها دسترسی داشته باشید" : "برای دسترسی به تمام دروس، اشتراک VIP تهیه کنید"}
+              </p>
+              <Button
+                size="full"
+                variant="outline"
+                onClick={() => router.push("/subscription")}
+              >
+                خرید اشتراک VIP
+              </Button>
+            </div>
           </div>
         )}
 

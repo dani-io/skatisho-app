@@ -37,15 +37,22 @@ export async function GET(
     return NextResponse.json({ error: "دوره یافت نشد" }, { status: 404 });
   }
 
-  // Check if user has active subscription
+  // Check access: VIP subscription OR individual course purchase
   let hasAccess = false;
+  let hasVIP = false;
+  let hasPurchased = false;
   let progress: Record<string, boolean> = {};
-
   if (session) {
     const subscription = await db.subscription.findUnique({
       where: { userId: session.userId },
     });
-    hasAccess = !!subscription?.isActive && new Date(subscription.endDate) > new Date();
+    hasVIP = !!subscription?.isActive && new Date(subscription.endDate) > new Date();
+
+    const courseAccess = await db.courseAccess.findUnique({
+      where: { userId_courseId: { userId: session.userId, courseId } },
+    });
+    hasPurchased = !!courseAccess;
+    hasAccess = hasVIP || hasPurchased;;
 
     // Get user progress
     const userProgress = await db.lessonProgress.findMany({
@@ -63,6 +70,8 @@ export async function GET(
       thumbnail: serverFileUrl(course.thumbnail),
       chapters: course.chapters.map((ch: any) => ({ ...ch, lessons: ch.lessons.map((l: any) => ({ ...l, thumbnail: serverFileUrl(l.thumbnail) })) })),
       hasAccess,
+      hasVIP,
+      hasPurchased,
       progress,
     },
   });

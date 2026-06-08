@@ -35,6 +35,7 @@ model User {
   addresses     Address[]
   badges        UserBadge[]
   lessonBookmarks LessonBookmark[]
+  courseAccess   CourseAccess[]
   walletBalance Int       @default(0)
   referralCode  String    @unique @default(cuid())
   referredBy    String?
@@ -61,11 +62,13 @@ model Course {
   coach       Coach    @relation(fields: [coachId], references: [id])
   order       Int      @default(0)
   isPublished Boolean  @default(false)
+  price       Int?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   chapters    Chapter[]
   favorites   Favorite[]
+  courseAccess CourseAccess[]
 
   @@map("courses")
 }
@@ -448,4 +451,18 @@ model LessonBookmark {
 
   @@unique([userId, lessonId])
   @@map("lesson_bookmarks")
+}
+
+// ==================== COURSE ACCESS (individual purchase) ====================
+model CourseAccess {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId     String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  amount      Int
+  purchasedAt DateTime @default(now())
+
+  @@unique([userId, courseId])
+  @@map("course_access")
 }

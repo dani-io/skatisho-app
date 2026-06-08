@@ -36,6 +36,7 @@ interface Course {
   level: string;
   coachId: string;
   isPublished: boolean;
+  price: number | null;
   order: number;
   chapters: Chapter[];
 }
@@ -246,6 +247,16 @@ export default function AdminCourseDetailPage() {
               onChange={(e) => setCourse({ ...course, isPublished: e.target.checked })}
               className="accent-primary"
             />
+          <div>
+            <label className="block text-xs font-medium mb-1">قیمت دوره (تومان) — خالی = فقط با اشتراک</label>
+            <input
+              type="number"
+              placeholder="مثلاً ۲,۵۰۰,۰۰۰"
+              className="w-full h-10 px-3 text-sm border border-surface-container rounded-[var(--radius-input)] focus:border-primary focus:outline-none"
+              value={course.price || ""}
+              onChange={(e) => setCourse({ ...course, price: parseInt(e.target.value) || null })}
+            />
+          </div>
             <label htmlFor="published" className="text-sm">منتشر شده</label>
           </div>
           <Button onClick={saveCourse} disabled={saving}>
