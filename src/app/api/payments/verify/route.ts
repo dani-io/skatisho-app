@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   const authority = url.searchParams.get("Authority");
   const status = url.searchParams.get("Status");
   const paymentId = url.searchParams.get("paymentId");
-  const origin = url.origin;
+  const origin = process.env.APP_URL || url.origin;
 
   if (!authority || !paymentId) {
     return NextResponse.redirect(`${origin}/payment/result?status=error`);
