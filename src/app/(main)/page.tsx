@@ -5,6 +5,7 @@ import { NotificationBell } from "@/components/layout/notification-bell";
 import { ChevronLeft, Zap } from "lucide-react";
 import Link from "next/link";
 import { CourseCard } from "@/components/course/course-card";
+import PromotionSlider from "@/components/promotion-slider";
 import { toPersianDigits } from "@/lib/utils";
 
 interface Course {
@@ -95,6 +96,9 @@ export default function HomePage() {
           </Link>
         </div>
       )}
+
+      {/* Promotion Slider */}
+      <PromotionSlider />
 
       {/* Special Offer Banner (new users) */}
       {!hasSubscription && (
