@@ -17,19 +17,32 @@ export default function ReferralPage() {
   }, []);
 
   async function handleCopy() {
-    const text = `اسکیتی‌شو رو نصب کن و با کد معرف من ثبت‌نام کن:\n${code}\n\nhttps://app.skatisho.com`;
-    await navigator.clipboard.writeText(text);
+    const text = `🛼 اسکیتی‌شو — اولین اپ آموزش اسکیت ایران!\nبا کد دعوت من ثبت‌نام کن و هدیه بگیر:\nکد: ${code}\nskatisho.ir/join/${code}`;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // Fallback for HTTP
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
 
   async function handleShare() {
+    const shareText = `🛼 اسکیتی‌شو — اولین اپ آموزش اسکیت!\nبا کد ${code} ثبت‌نام کن و هدیه بگیر`;
     if (navigator.share) {
-      await navigator.share({
-        title: "اسکیتی‌شو",
-        text: `با اسکیتی‌شو اسکیت یاد بگیر! کد معرف من: ${code}`,
-        url: "https://app.skatisho.com",
-      });
+      try {
+        await navigator.share({
+          title: "اسکیتی‌شو",
+          text: shareText,
+          url: `https://skatisho.ir/join/${code}`,
+        });
+      } catch { handleCopy(); }
     } else {
       handleCopy();
     }
