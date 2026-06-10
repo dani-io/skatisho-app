@@ -2,36 +2,33 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { fileUrl } from "@/lib/storage";
 
 interface Slide {
-  id: number;
-  title: string;
-  subtitle: string;
-  bg: string;
-  icon: string;
-  href: string;
+  id: string;
+  title: string | null;
+  link: string | null;
+  imageKey: string;
 }
-
-const slides: Slide[] = [
-  { id: 1, title: "دوره جدید اسپید", subtitle: "۴۰٪ تخفیف", bg: "from-purple-500 to-pink-500", icon: "⚡", href: "/courses" },
-  { id: 2, title: "تجهیزات اسکیت", subtitle: "حراج زمستانه", bg: "from-blue-500 to-cyan-500", icon: "🛍️", href: "/shop" },
-  { id: 3, title: "مربی حرفه‌ای", subtitle: "رزرو وقت", bg: "from-amber-500 to-orange-500", icon: "👨‍🏫", href: "/coaches" },
-];
 
 export default function PromotionSlider() {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [slides, setSlides] = useState<Slide[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-
-  const slideWidth = useRef(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!scrollRef.current) return;
-    slideWidth.current = scrollRef.current.clientWidth;
+    fetch("/api/banners")
+      .then((r) => r.json())
+      .then((d) => {
+        setSlides(d.banners || []);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
-    if (isPaused) return;
+    if (isPaused || slides.length === 0) return;
     const timer = setInterval(() => {
       const next = (activeIndex + 1) % slides.length;
       setActiveIndex(next);
@@ -42,7 +39,7 @@ export default function PromotionSlider() {
       });
     }, 4000);
     return () => clearInterval(timer);
-  }, [activeIndex, isPaused]);
+  }, [activeIndex, isPaused, slides.length]);
 
   function handleScroll() {
     if (!scrollRef.current) return;
@@ -63,6 +60,8 @@ export default function PromotionSlider() {
     });
   }
 
+  if (loading || slides.length === 0) return null;
+
   return (
     <div className="mb-6">
       <div
@@ -78,14 +77,19 @@ export default function PromotionSlider() {
         {slides.map((slide) => (
           <Link
             key={slide.id}
-            href={slide.href}
-            className={`snap-start min-w-full bg-gradient-to-l ${slide.bg} p-4 flex items-center gap-3`}
+            href={slide.link || "#"}
+            className="snap-start min-w-full rounded-[var(--radius-card)] overflow-hidden relative h-[84px] block"
           >
-            <span className="text-2xl shrink-0">{slide.icon}</span>
-            <div>
-              <p className="text-sm font-bold text-white">{slide.title}</p>
-              <p className="text-xs text-white/80 mt-0.5">{slide.subtitle}</p>
-            </div>
+            <img
+              src={fileUrl(slide.imageKey)}
+              alt={slide.title || ""}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            {slide.title && (
+              <div className="absolute inset-0 bg-gradient-to-l from-black/50 to-transparent p-4 flex flex-col justify-center">
+                <p className="text-sm font-bold text-white">{slide.title}</p>
+              </div>
+            )}
           </Link>
         ))}
       </div>

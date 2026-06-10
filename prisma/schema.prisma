@@ -423,6 +423,21 @@ enum CouponScope {
   SHOP
 }
 
+// ==================== BANNERS ====================
+
+model Banner {
+  id        String   @id @default(cuid())
+  title     String?
+  link      String?
+  imageKey  String
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("banners")
+}
+
 // ==================== GIFT CARDS ====================
 model GiftCard {
   id        String    @id @default(cuid())
