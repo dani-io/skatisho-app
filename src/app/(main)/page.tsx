@@ -73,14 +73,14 @@ export default function HomePage() {
 
       {/* Subscription Banner */}
       {hasSubscription ? (
-        <div className="bg-gradient-to-l from-success to-green-600 rounded-[var(--radius-card)] p-4 mb-6">
+        <div className="bg-gradient-to-l from-success to-green-600 rounded-[var(--radius-card)] p-4 mb-6 h-[84px] flex flex-col justify-center">
           <p className="text-sm font-medium text-white">اشتراک فعال</p>
           <p className="text-lg font-bold text-white mt-1">
             {user?.subscription?.plan.title}
           </p>
         </div>
       ) : (
-        <div className="bg-gradient-to-l from-primary to-primary-dark rounded-[var(--radius-card)] p-4 mb-6">
+        <div className="bg-gradient-to-l from-primary to-primary-dark rounded-[var(--radius-card)] p-4 mb-6 h-[84px] flex flex-col justify-center">
           <p className="text-sm font-medium text-on-surface">
             وضعیت اشتراک شما
           </p>
