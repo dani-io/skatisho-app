@@ -78,28 +78,20 @@ export default function HomePage() {
 
       {/* Subscription Banner */}
       {hasSubscription ? (
-        <div className="bg-gradient-to-l from-success to-green-600 rounded-[var(--radius-card)] p-4 mb-6 h-[84px] flex flex-col justify-center">
-          <p className="text-sm font-medium text-white">اشتراک فعال</p>
-          <p className="text-lg font-bold text-white mt-1">
-            {user?.subscription?.plan.title}
-          </p>
+        <div className="bg-gradient-to-l from-success to-green-600 rounded-[var(--radius-card)] px-4 py-3 mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-white">اشتراک فعال</span>
+            <span className="text-xs text-white/80">({user?.subscription?.plan.title})</span>
+          </div>
+          <Link href="/subscription" className="text-xs text-white/90 font-medium">جزئیات ←</Link>
         </div>
       ) : (
-        <div className="bg-gradient-to-l from-primary to-primary-dark rounded-[var(--radius-card)] p-4 mb-6 h-[84px] flex flex-col justify-center">
-          <p className="text-sm font-medium text-on-surface">
-            وضعیت اشتراک شما
-          </p>
-          <p className="text-lg font-bold text-on-surface mt-1">
-            بدون اشتراک فعال
-          </p>
-          <Link
-            href="/subscription"
-            className="inline-flex items-center gap-1 mt-3 bg-on-surface text-white px-4 py-2 rounded-[var(--radius-button)] text-sm font-medium"
-          >
-            خرید اشتراک
-            <ChevronLeft className="w-4 h-4" />
-          </Link>
-        </div>
+        <Link href="/subscription" className="block mb-6">
+          <div className="bg-gradient-to-l from-primary to-primary-dark rounded-[var(--radius-card)] px-4 py-3 flex items-center justify-between">
+            <span className="text-sm font-bold text-on-surface">بدون اشتراک فعال</span>
+            <span className="text-xs bg-black/10 text-on-surface px-3 py-1 rounded-full font-medium">خرید اشتراک ←</span>
+          </div>
+        </Link>
       )}
 
       {/* Promotion Slider */}

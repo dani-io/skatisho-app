@@ -20,6 +20,7 @@ import {
   LogOut,
   Menu,
   X,
+  HelpCircle,
 } from "lucide-react";
 import {
   cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ const NAV_ITEMS = [
   { href: "/admin/coupons", label: "کدهای تخفیف", icon: Tag },
   { href: "/admin/banners", label: "بنرها", icon: Image },
   { href: "/admin/gift-cards", label: "کارت هدیه", icon: Gift },
+  { href: "/admin/faq", label: "سوالات متداول", icon: HelpCircle },
   { href: "/admin/orders", label: "سفارشات", icon: Package },
   { href: "/admin/analytics", label: "گزارشات", icon: BarChart3 },
 ];

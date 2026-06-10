@@ -112,10 +112,10 @@ export default function CourseDetailPage() {
   const completedLessons = Object.values(course.progress).filter(Boolean).length;
 
   return (
-    <div className="pb-6">
+    <div className="pb-6 pt-4 px-4">
       {/* Header */}
       <div className="relative">
-        <div className="aspect-video bg-surface-dim">
+        <div className="aspect-video bg-surface-dim rounded-2xl overflow-hidden">
           {course.thumbnail && (
             <img
               src={course.thumbnail}

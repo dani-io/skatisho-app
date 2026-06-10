@@ -493,3 +493,26 @@ model MoodLog {
 
   @@map("mood_logs")
 }
+
+// ==================== FAQ ====================
+model FaqCategory {
+  id        String    @id @default(cuid())
+  title     String
+  order     Int       @default(0)
+  items     FaqItem[]
+  createdAt DateTime  @default(now())
+
+  @@map("faq_categories")
+}
+
+model FaqItem {
+  id         String      @id @default(cuid())
+  categoryId String
+  category   FaqCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  question   String
+  answer     String
+  order      Int         @default(0)
+  createdAt  DateTime    @default(now())
+
+  @@map("faq_items")
+}
