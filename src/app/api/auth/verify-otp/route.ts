@@ -27,8 +27,9 @@ export async function POST(req: NextRequest) {
     let user = await db.user.findUnique({ where: { phone } });
 
     if (!user) {
+      const refCode = Array.from({length: 7}, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join("");
       user = await db.user.create({
-        data: { phone },
+        data: { phone, referralCode: refCode },
       });
     }
 

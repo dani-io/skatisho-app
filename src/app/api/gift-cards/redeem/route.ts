@@ -40,6 +40,14 @@ export async function POST(req: NextRequest) {
       where: { id: session.userId },
       data: { walletBalance: { increment: card.amount } },
     }),
+    db.walletTransaction.create({
+      data: {
+        userId: session.userId,
+        amount: card.amount,
+        type: "GIFT_CARD",
+        description: `شارژ کارت هدیه ${card.code}`,
+      },
+    }),
   ]);
 
   const scopeLabel = card.scope === "SUBSCRIPTION" ? "(اشتراک)" : card.scope === "SHOP" ? "(فروشگاه)" : "";

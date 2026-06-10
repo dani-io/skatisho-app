@@ -37,6 +37,7 @@ model User {
   lessonBookmarks LessonBookmark[]
   courseAccess   CourseAccess[]
   moodLogs      MoodLog[]
+  walletTx      WalletTransaction[]
   walletBalance Int       @default(0)
   referralCode  String    @unique @default(cuid())
   referredBy    String?
@@ -515,4 +516,17 @@ model FaqItem {
   createdAt  DateTime    @default(now())
 
   @@map("faq_items")
+}
+
+// ==================== WALLET TRANSACTIONS ====================
+model WalletTransaction {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount      Int
+  type        String   // GIFT_CARD, COURSE_PURCHASE, REFUND, TOP_UP
+  description String
+  createdAt   DateTime @default(now())
+
+  @@map("wallet_transactions")
 }

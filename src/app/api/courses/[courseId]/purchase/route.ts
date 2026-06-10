@@ -59,6 +59,14 @@ export async function POST(
         amount: course.price,
       },
     }),
+    db.walletTransaction.create({
+      data: {
+        userId: session.userId,
+        amount: -course.price,
+        type: "COURSE_PURCHASE",
+        description: `خرید دوره «${course.title}»`,
+      },
+    }),
   ]);
 
   await createNotification({

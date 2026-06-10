@@ -98,6 +98,40 @@ function profileCompletion(user: UserData): number {
   return Math.round((filled / fields.length) * 100);
 }
 
+function WalletTransactions() {
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loadingTx, setLoadingTx] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/wallet")
+      .then((r) => r.json())
+      .then((d) => setTransactions(d.transactions || []))
+      .finally(() => setLoadingTx(false));
+  }, []);
+
+  if (loadingTx) return null;
+  if (transactions.length === 0) return null;
+
+  return (
+    <div className="border-t border-surface-container pt-3 mt-3">
+      <p className="text-xs font-bold mb-2">تراکنش‌ها</p>
+      <div className="space-y-2 max-h-48 overflow-y-auto">
+        {transactions.map((tx: any) => (
+          <div key={tx.id} className="flex items-center justify-between text-xs">
+            <div className="flex-1 min-w-0">
+              <p className="truncate">{tx.description}</p>
+              <p className="text-[10px] text-on-surface-muted">{new Date(tx.createdAt).toLocaleDateString("fa-IR")}</p>
+            </div>
+            <span className={`font-bold shrink-0 mr-2 ${tx.amount > 0 ? "text-green-600" : "text-red-500"}`}>
+              {tx.amount > 0 ? "+" : ""}{tx.amount.toLocaleString()}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function BookmarksList() {
   const [bookmarks, setBookmarks] = useState<any[]>([]);
   const [loadingBm, setLoadingBm] = useState(true);
@@ -453,6 +487,7 @@ export default function ProfilePage() {
               {giftLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Gift className="w-4 h-4 ml-1" />شارژ</>}
             </Button>
           </div>
+          <WalletTransactions />
           {giftMsg && (
             <p className={`text-xs mt-2 ${giftMsg.ok ? "text-green-600" : "text-error"}`}>{giftMsg.text}</p>
           )}
