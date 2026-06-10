@@ -51,6 +51,8 @@ export default function CheckoutPage() {
   const [addrPostal, setAddrPostal] = useState("");
   const [addrPhone, setAddrPhone] = useState("");
   const [savingAddr, setSavingAddr] = useState(false);
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [useWallet, setUseWallet] = useState(false);
 
   useEffect(() => {
     if (items.length === 0) { router.push("/cart"); return; }
@@ -64,6 +66,7 @@ export default function CheckoutPage() {
         else if (addrs.length > 0) setSelectedAddress(addrs[0].id);
       })
       .finally(() => setLoading(false));
+      fetch("/api/wallet").then((r) => r.json()).then((d) => setWalletBalance(d.balance || 0));
   }, []);
 
   async function saveAddress() {
@@ -126,6 +129,9 @@ export default function CheckoutPage() {
     if (!selectedAddress) return;
     setPaying(true);
     try {
+      const walletDeduction = useWallet ? Math.min(walletBalance, grandTotal) : 0;
+      const toPay = grandTotal - walletDeduction;
+
       const res = await fetch("/api/payments/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -137,10 +143,18 @@ export default function CheckoutPage() {
           addressId: selectedAddress,
           shippingMethod: selectedShipping,
           couponId: appliedCoupon?.couponId,
+          useWallet,
+          walletDeduction,
         }),
       });
       const data = await res.json();
-      if (data.payUrl) { clearCart(); window.location.href = data.payUrl; }
+      if (data.paidByWallet) {
+        clearCart();
+        router.push("/payment/result?status=success&wallet=1");
+      } else if (data.payUrl) {
+        clearCart();
+        window.location.href = data.payUrl;
+      }
     } finally { setPaying(false); }
   }
 
@@ -277,6 +291,31 @@ export default function CheckoutPage() {
 
       {/* Summary */}
       <div className="bg-white rounded-[var(--radius-card)] border border-surface-container p-4 mb-4">
+        {/* Wallet */}
+      {walletBalance > 0 && (
+        <div className="bg-white rounded-[var(--radius-card)] border border-surface-container p-4 mb-4">
+          <label className="flex items-center justify-between cursor-pointer">
+            <div>
+              <p className="text-sm font-bold">پرداخت از کیف پول</p>
+              <p className="text-xs text-on-surface-muted mt-0.5">
+                موجودی: {formatPrice(walletBalance)}
+              </p>
+            </div>
+            <div className={`w-11 h-6 rounded-full transition-colors relative ${useWallet ? "bg-primary" : "bg-gray-300"}`}
+              onClick={() => setUseWallet(!useWallet)}>
+              <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${useWallet ? "left-5" : "left-0.5"}`} />
+            </div>
+          </label>
+          {useWallet && (
+            <p className="text-xs text-primary mt-2 font-medium">
+              {walletBalance >= grandTotal
+                ? `کل مبلغ از کیف پول پرداخت میشه`
+                : `${formatPrice(walletBalance)} از کیف پول + ${formatPrice(grandTotal - walletBalance)} از درگاه`}
+            </p>
+          )}
+        </div>
+      )}
+      
         <h2 className="text-sm font-bold mb-3">خلاصه سفارش</h2>
         <div className="space-y-2">
           {items.map((item) => (

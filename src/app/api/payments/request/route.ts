@@ -48,7 +48,64 @@ export async function POST(req: NextRequest) {
     } else {
       return NextResponse.json({ error: "invalid type" }, { status: 400 });
     }
+    // Handle wallet payment
+    const { useWallet, walletDeduction } = body;
+    let walletUsed = 0;
 
+    if (useWallet && walletDeduction > 0) {
+      const userWallet = await db.user.findUnique({
+        where: { id: session.userId },
+        select: { walletBalance: true },
+      });
+      walletUsed = Math.min(walletDeduction, userWallet?.walletBalance || 0, amount);
+      amount -= walletUsed;
+
+      // If wallet covers everything
+      if (amount <= 0) {
+        await db.$transaction([
+          db.user.update({
+            where: { id: session.userId },
+            data: { walletBalance: { decrement: walletUsed } },
+          }),
+          db.walletTransaction.create({
+            data: {
+              userId: session.userId,
+              amount: -walletUsed,
+              type: "ORDER_PAYMENT",
+              description: `پرداخت سفارش از کیف پول`,
+            },
+          }),
+          db.payment.create({
+            data: {
+              userId: session.userId,
+              amount: walletUsed,
+              description: JSON.stringify(metadata),
+              status: "SUCCESS",
+              refId: "WALLET",
+            },
+          }),
+        ]);
+        return NextResponse.json({ paidByWallet: true });
+      }
+
+      // Partial wallet: deduct now, rest via Zarinpal
+      await db.$transaction([
+        db.user.update({
+          where: { id: session.userId },
+          data: { walletBalance: { decrement: walletUsed } },
+        }),
+        db.walletTransaction.create({
+          data: {
+            userId: session.userId,
+            amount: -walletUsed,
+            type: "ORDER_PAYMENT",
+            description: `پرداخت بخشی از سفارش از کیف پول`,
+          },
+        }),
+      ]);
+      metadata.walletUsed = walletUsed;
+    }
+    
     const payment = await db.payment.create({
       data: {
         userId: session.userId,
