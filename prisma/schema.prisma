@@ -39,6 +39,8 @@ model User {
   moodLogs      MoodLog[]
   walletTx      WalletTransaction[]
   walletBalance Int       @default(0)
+  lastLoginAt   DateTime?
+  lastLoginIp   String?
   referralCode  String    @unique @default(cuid())
   referredBy    String?
 

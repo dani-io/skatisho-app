@@ -34,6 +34,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Create session
+    // Track login
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
+    await db.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date(), lastLoginIp: ip },
+    });
     await createSession(user.id, user.phone);
 
     return NextResponse.json({

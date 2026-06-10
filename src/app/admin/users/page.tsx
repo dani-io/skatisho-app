@@ -243,7 +243,7 @@ export default function AdminUsersPage() {
           </thead>
           <tbody className="divide-y divide-surface-container">
             {users.map((u) => (
-              <tr key={u.id} className="hover:bg-surface-dim/50">
+              <tr key={u.id} className="hover:bg-surface-dim/50 cursor-pointer" onClick={() => window.location.href=`/admin/users/${u.id}`}>
                 <td className="p-3">{u.name || "—"}</td>
                 <td className="p-3" dir="ltr">{u.phone}</td>
                 <td className="p-3">{u.skillLevel || "—"}</td>
