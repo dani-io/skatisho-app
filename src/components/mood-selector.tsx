@@ -44,7 +44,7 @@ export function MoodSelector({ isOpen, onClose, onSelect, currentMood }: MoodSel
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full max-w-lg bg-white rounded-t-2xl p-5 pb-8 animate-slide-up">
+      <div className="relative w-full max-w-lg bg-white rounded-t-2xl p-5 pb-24 animate-slide-up">
         <div className="flex items-center justify-between mb-4">
           <button onClick={onClose}><X className="w-5 h-5" /></button>
           <h2 className="font-bold text-base">امروز چطوری؟</h2>
