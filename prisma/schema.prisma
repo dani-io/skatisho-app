@@ -36,6 +36,7 @@ model User {
   badges        UserBadge[]
   lessonBookmarks LessonBookmark[]
   courseAccess   CourseAccess[]
+  moodLogs      MoodLog[]
   walletBalance Int       @default(0)
   referralCode  String    @unique @default(cuid())
   referredBy    String?
@@ -480,4 +481,15 @@ model CourseAccess {
 
   @@unique([userId, courseId])
   @@map("course_access")
+}
+
+// ==================== MOOD LOG ====================
+model MoodLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mood      String
+  createdAt DateTime @default(now())
+
+  @@map("mood_logs")
 }

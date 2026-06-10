@@ -7,6 +7,7 @@ import Link from "next/link";
 import { CourseCard } from "@/components/course/course-card";
 import PromotionSlider from "@/components/promotion-slider";
 import { toPersianDigits } from "@/lib/utils";
+import { MoodSelector, MoodButton } from "@/components/mood-selector";
 
 interface Course {
   id: string;
@@ -27,6 +28,8 @@ export default function HomePage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [user, setUser] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mood, setMood] = useState<string | null>(null);
+  const [showMood, setShowMood] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -38,6 +41,7 @@ export default function HomePage() {
         setUser(userData.user || null);
       })
       .finally(() => setLoading(false));
+      fetch("/api/mood").then((r) => r.json()).then((d) => setMood(d.mood));
   }, []);
 
   const hasSubscription = user?.subscription?.isActive && 
@@ -64,6 +68,7 @@ export default function HomePage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+        <MoodButton mood={mood} onClick={() => setShowMood(true)} />
           <NotificationBell />
           <div className="w-10 h-10 rounded-full bg-surface-dim flex items-center justify-center">
           <img src="/icons/logo.svg" alt="Logo" className="w-6 h-6" />
@@ -155,6 +160,19 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+      <MoodSelector
+        isOpen={showMood}
+        onClose={() => setShowMood(false)}
+        currentMood={mood}
+        onSelect={async (m) => {
+          setMood(m);
+          await fetch("/api/mood", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mood: m }),
+          });
+        }}
+      />
     </div>
   );
 }

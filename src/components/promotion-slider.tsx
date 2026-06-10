@@ -71,14 +71,14 @@ export default function PromotionSlider() {
         onMouseLeave={() => setIsPaused(false)}
         onTouchStart={() => setIsPaused(true)}
         onTouchEnd={() => setIsPaused(false)}
-        className="flex overflow-x-auto snap-x snap-mandatory rounded-[var(--radius-card)] h-[84px]"
+        className="flex overflow-x-auto snap-x snap-mandatory rounded-[var(--radius-card)] h-[160px]"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {slides.map((slide) => (
           <Link
             key={slide.id}
             href={slide.link || "#"}
-            className="snap-start min-w-full rounded-[var(--radius-card)] overflow-hidden relative h-[84px] block"
+            className="snap-start min-w-full rounded-[var(--radius-card)] overflow-hidden relative h-[160px] block"
           >
             <img
               src={fileUrl(slide.imageKey)}
