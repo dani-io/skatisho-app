@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ArrowRight, MapPin, Plus, Truck, Package, Check, Tag, X, Loader2,
+  ArrowRight, MapPin, Plus, Truck, Check, Tag, X, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatPrice, toPersianDigits } from "@/lib/utils";
@@ -20,19 +20,25 @@ interface Address {
   isDefault: boolean;
 }
 
-const SHIPPING_METHODS = [
-  { id: "post", label: "پست پیشتاز", price: 150000, days: "۳ تا ۵ روز کاری", icon: Truck },
-  { id: "express", label: "ارسال اکسپرس", price: 350000, days: "۱ تا ۲ روز کاری", icon: Package },
-];
+interface ShippingMethod {
+  id: string;
+  title: string;
+  price: number;
+  description: string | null;
+  minFreeAmount: number | null;
+}
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, totalPrice, clearCart } = useCartStore();
   const [addresses, setAddresses] = useState<Address[]>([]);
+  const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
   const [selectedAddress, setSelectedAddress] = useState("");
-  const [selectedShipping, setSelectedShipping] = useState("post");
+  const [selectedShipping, setSelectedShipping] = useState("");
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [useWallet, setUseWallet] = useState(false);
 
   // Coupon
   const [couponCode, setCouponCode] = useState("");
@@ -51,22 +57,27 @@ export default function CheckoutPage() {
   const [addrPostal, setAddrPostal] = useState("");
   const [addrPhone, setAddrPhone] = useState("");
   const [savingAddr, setSavingAddr] = useState(false);
-  const [walletBalance, setWalletBalance] = useState(0);
-  const [useWallet, setUseWallet] = useState(false);
 
   useEffect(() => {
     if (items.length === 0) { router.push("/cart"); return; }
-    fetch("/api/addresses")
-      .then((r) => r.json())
-      .then((data) => {
-        const addrs = data.addresses || [];
-        setAddresses(addrs);
-        const def = addrs.find((a: Address) => a.isDefault);
-        if (def) setSelectedAddress(def.id);
-        else if (addrs.length > 0) setSelectedAddress(addrs[0].id);
-      })
-      .finally(() => setLoading(false));
-      fetch("/api/wallet").then((r) => r.json()).then((d) => setWalletBalance(d.balance || 0));
+
+    Promise.all([
+      fetch("/api/addresses").then((r) => r.json()),
+      fetch("/api/shipping").then((r) => r.json()),
+      fetch("/api/wallet").then((r) => r.json()),
+    ]).then(([addrData, shipData, walletData]) => {
+      const addrs = addrData.addresses || [];
+      setAddresses(addrs);
+      const def = addrs.find((a: Address) => a.isDefault);
+      if (def) setSelectedAddress(def.id);
+      else if (addrs.length > 0) setSelectedAddress(addrs[0].id);
+
+      const methods = shipData.methods || [];
+      setShippingMethods(methods);
+      if (methods.length > 0) setSelectedShipping(methods[0].id);
+
+      setWalletBalance(walletData.balance || 0);
+    }).finally(() => setLoading(false));
   }, []);
 
   async function saveAddress() {
@@ -100,15 +111,13 @@ export default function CheckoutPage() {
       const res = await fetch("/api/coupons/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: couponCode, amount: totalPrice() }),
+        body: JSON.stringify({ code: couponCode, amount: totalPrice(), scope: "SHOP" }),
       });
       const data = await res.json();
       if (data.valid) {
         setAppliedCoupon({
-          couponId: data.couponId,
-          code: data.code,
-          discount: data.discount,
-          description: data.description,
+          couponId: data.couponId, code: data.code,
+          discount: data.discount, description: data.description,
         });
         setCouponError("");
       } else {
@@ -130,7 +139,6 @@ export default function CheckoutPage() {
     setPaying(true);
     try {
       const walletDeduction = useWallet ? Math.min(walletBalance, grandTotal) : 0;
-      const toPay = grandTotal - walletDeduction;
 
       const res = await fetch("/api/payments/request", {
         method: "POST",
@@ -158,10 +166,12 @@ export default function CheckoutPage() {
     } finally { setPaying(false); }
   }
 
-  const shipping = SHIPPING_METHODS.find((s) => s.id === selectedShipping)!;
   const itemsTotal = totalPrice();
+  const shipping = shippingMethods.find((s) => s.id === selectedShipping);
+  const isFreeShipping = shipping?.minFreeAmount ? itemsTotal >= shipping.minFreeAmount : false;
+  const shippingPrice = shipping ? (isFreeShipping ? 0 : shipping.price) : 0;
   const discount = appliedCoupon?.discount || 0;
-  const grandTotal = itemsTotal + shipping.price - discount;
+  const grandTotal = itemsTotal + shippingPrice - discount;
 
   if (loading) {
     return (
@@ -243,19 +253,27 @@ export default function CheckoutPage() {
       <div className="bg-white rounded-[var(--radius-card)] border border-surface-container p-4 mb-4">
         <h2 className="text-sm font-bold mb-3">نحوه ارسال</h2>
         <div className="space-y-2">
-          {SHIPPING_METHODS.map((method) => (
-            <button key={method.id} onClick={() => setSelectedShipping(method.id)}
-              className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${
-                selectedShipping === method.id ? "border-primary bg-primary/5" : "border-surface-container"
-              }`}>
-              <method.icon className={`w-5 h-5 ${selectedShipping === method.id ? "text-primary" : "text-on-surface-muted"}`} />
-              <div className="flex-1 text-right">
-                <p className="text-sm font-medium">{method.label}</p>
-                <p className="text-[11px] text-on-surface-muted">{method.days}</p>
-              </div>
-              <span className="text-sm font-bold">{formatPrice(method.price)}</span>
-            </button>
-          ))}
+          {shippingMethods.map((s) => {
+            const isFree = s.minFreeAmount ? itemsTotal >= s.minFreeAmount : false;
+            return (
+              <button key={s.id} onClick={() => setSelectedShipping(s.id)}
+                className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${
+                  selectedShipping === s.id ? "border-primary bg-primary/5" : "border-surface-container"
+                }`}>
+                <Truck className={`w-5 h-5 shrink-0 ${selectedShipping === s.id ? "text-primary" : "text-on-surface-muted"}`} />
+                <div className="flex-1 text-right">
+                  <p className="text-sm font-medium">{s.title}</p>
+                  {s.description && <p className="text-[11px] text-on-surface-muted">{s.description}</p>}
+                </div>
+                <p className="text-sm font-bold shrink-0">
+                  {isFree
+                    ? <span className="text-green-600">رایگان!</span>
+                    : formatPrice(s.price)
+                  }
+                </p>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -289,9 +307,7 @@ export default function CheckoutPage() {
         )}
       </div>
 
-      {/* Summary */}
-      <div className="bg-white rounded-[var(--radius-card)] border border-surface-container p-4 mb-4">
-        {/* Wallet */}
+      {/* Wallet */}
       {walletBalance > 0 && (
         <div className="bg-white rounded-[var(--radius-card)] border border-surface-container p-4 mb-4">
           <label className="flex items-center justify-between cursor-pointer">
@@ -309,13 +325,15 @@ export default function CheckoutPage() {
           {useWallet && (
             <p className="text-xs text-primary mt-2 font-medium">
               {walletBalance >= grandTotal
-                ? `کل مبلغ از کیف پول پرداخت میشه`
-                : `${formatPrice(walletBalance)} از کیف پول + ${formatPrice(grandTotal - walletBalance)} از درگاه`}
+                ? "کل مبلغ از کیف پول پرداخت میشه"
+                : `${formatPrice(Math.min(walletBalance, grandTotal))} از کیف پول + ${formatPrice(grandTotal - Math.min(walletBalance, grandTotal))} از درگاه`}
             </p>
           )}
         </div>
       )}
-      
+
+      {/* Summary */}
+      <div className="bg-white rounded-[var(--radius-card)] border border-surface-container p-4 mb-4">
         <h2 className="text-sm font-bold mb-3">خلاصه سفارش</h2>
         <div className="space-y-2">
           {items.map((item) => (
@@ -331,7 +349,7 @@ export default function CheckoutPage() {
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-on-surface-muted">هزینه ارسال</span>
-              <span>{formatPrice(shipping.price)}</span>
+              <span>{isFreeShipping ? <span className="text-green-600">رایگان!</span> : formatPrice(shippingPrice)}</span>
             </div>
             {discount > 0 && (
               <div className="flex justify-between text-sm text-green-600">

@@ -532,3 +532,17 @@ model WalletTransaction {
 
   @@map("wallet_transactions")
 }
+
+// ==================== SHIPPING METHODS ====================
+model ShippingMethod {
+  id             String   @id @default(cuid())
+  title          String
+  price          Int
+  description    String?
+  minFreeAmount  Int?     // free shipping above this amount
+  isActive       Boolean  @default(true)
+  order          Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  @@map("shipping_methods")
+}
