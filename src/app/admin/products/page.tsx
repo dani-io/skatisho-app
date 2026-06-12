@@ -7,6 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { formatPrice, toPersianDigits } from "@/lib/utils";
 import { FileUpload } from "@/components/ui/file-upload";
+import { fileUrl } from "@/lib/storage";
 
 interface OptionValue {
   label: string;
@@ -33,6 +34,7 @@ interface Product {
   customizable: boolean;
   options: ProductOption[] | null;
   thumbnail: string | null;
+  images: string[];
 }
 
 const categoryOptions = [
@@ -49,6 +51,7 @@ const emptyForm = {
   category: "INLINE_SKATE", brand: "", inStock: true, isPublished: true,
   customizable: false, options: [] as ProductOption[],
   thumbnail: null as string | null,
+  images: [] as string[],
 };
 
 export default function AdminProductsPage() {
@@ -89,6 +92,7 @@ export default function AdminProductsPage() {
       customizable: p.customizable || false,
       thumbnail: p.thumbnail || null,
       options: p.options || [],
+      images: p.images || [],
     });
     setEditing(p.id);
     setShowForm(true);
@@ -273,7 +277,30 @@ export default function AdminProductsPage() {
                   منتشر
                 </label>
               </div>
-
+                {/* Multi Images */}
+              <div>
+                <label className="block text-xs font-medium mb-1">تصاویر بیشتر</label>
+                <div className="grid grid-cols-3 gap-2 mb-2">
+                  {form.images.map((img, i) => (
+                    <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-surface-container">
+                      <img src={fileUrl(img)} alt="" className="w-full h-full object-cover" />
+                      <button onClick={() => setForm({ ...form, images: form.images.filter((_, j) => j !== i) })}
+                        className="absolute top-1 left-1 w-5 h-5 bg-black/50 rounded-full flex items-center justify-center">
+                        <X className="w-3 h-3 text-white" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {form.images.length < 6 && (
+                  <FileUpload
+                    label=""
+                    accept="image"
+                    folder="products/gallery"
+                    value={null}
+                    onChange={(url) => setForm({ ...form, images: [...form.images, url] })}
+                  />
+                )}
+              </div>
               {/* Customization Section */}
               <div className="border-t border-surface-container pt-3 mt-3">
                 <label className="flex items-center justify-between cursor-pointer">
