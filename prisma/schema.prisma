@@ -540,6 +540,7 @@ model ShippingMethod {
   price          Int
   description    String?
   minFreeAmount  Int?     // free shipping above this amount
+  paymentType    String   @default("PREPAID") // PREPAID or COD
   isActive       Boolean  @default(true)
   order          Int      @default(0)
   createdAt      DateTime @default(now())

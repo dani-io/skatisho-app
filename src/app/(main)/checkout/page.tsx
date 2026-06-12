@@ -26,6 +26,7 @@ interface ShippingMethod {
   price: number;
   description: string | null;
   minFreeAmount: number | null;
+  paymentType: string; // PREPAID or COD
 }
 
 export default function CheckoutPage() {
@@ -168,8 +169,9 @@ export default function CheckoutPage() {
 
   const itemsTotal = totalPrice();
   const shipping = shippingMethods.find((s) => s.id === selectedShipping);
-  const isFreeShipping = shipping?.minFreeAmount ? itemsTotal >= shipping.minFreeAmount : false;
-  const shippingPrice = shipping ? (isFreeShipping ? 0 : shipping.price) : 0;
+  const isCOD = shipping?.paymentType === "COD";
+  const isFreeShipping = !isCOD && shipping?.minFreeAmount ? itemsTotal >= shipping.minFreeAmount : false;
+  const shippingPrice = isCOD ? 0 : (shipping ? (isFreeShipping ? 0 : shipping.price) : 0);
   const discount = appliedCoupon?.discount || 0;
   const grandTotal = itemsTotal + shippingPrice - discount;
 
@@ -266,7 +268,9 @@ export default function CheckoutPage() {
                   {s.description && <p className="text-[11px] text-on-surface-muted">{s.description}</p>}
                 </div>
                 <p className="text-sm font-bold shrink-0">
-                  {isFree
+                  {s.paymentType === "COD"
+                    ? <span className="text-blue-600 text-xs">پس‌کرایه</span>
+                    : isFree
                     ? <span className="text-green-600">رایگان!</span>
                     : formatPrice(s.price)
                   }
@@ -349,7 +353,7 @@ export default function CheckoutPage() {
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-on-surface-muted">هزینه ارسال</span>
-              <span>{isFreeShipping ? <span className="text-green-600">رایگان!</span> : formatPrice(shippingPrice)}</span>
+              <span>{isCOD ? <span className="text-blue-600">پس‌کرایه (در مقصد)</span> : isFreeShipping ? <span className="text-green-600">رایگان!</span> : formatPrice(shippingPrice)}</span>
             </div>
             {discount > 0 && (
               <div className="flex justify-between text-sm text-green-600">
