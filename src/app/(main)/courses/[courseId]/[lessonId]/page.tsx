@@ -19,6 +19,7 @@ interface LessonDetail {
   title: string;
   description: string | null;
   videoUrl: string;
+  thumbnail: string | null;
   duration: number;
   chapter: { title: string; course: { id: string; title: string } };
 }
@@ -161,6 +162,7 @@ export default function LessonPage() {
       {/* Video Player */}
       <VideoPlayer
         src={lesson.videoUrl}
+        poster={lesson.thumbnail || undefined}
         onEnded={markComplete}
         onProgress={saveProgress}
       />

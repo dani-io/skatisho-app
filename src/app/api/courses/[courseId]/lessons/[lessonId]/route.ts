@@ -52,5 +52,5 @@ export async function GET(
     completed = progress?.completed ?? false;
   }
 
-  return NextResponse.json({ lesson: { ...lesson, videoUrl: serverFileUrl(lesson.videoUrl) }, completed });
+  return NextResponse.json({ lesson: { ...lesson, videoUrl: serverFileUrl(lesson.videoUrl), thumbnail: serverFileUrl(lesson.thumbnail) }, completed });
 }
