@@ -22,6 +22,7 @@ import {
   X,
   HelpCircle,
   Truck,
+  Globe,
 } from "lucide-react";
 import {
   cn } from "@/lib/utils";
@@ -38,6 +39,7 @@ const NAV_ITEMS = [
   { href: "/admin/gift-cards", label: "کارت هدیه", icon: Gift },
   { href: "/admin/faq", label: "سوالات متداول", icon: HelpCircle },
   { href: "/admin/shipping", label: "روش‌های ارسال", icon: Truck },
+  { href: "/admin/social", label: "شبکه‌های اجتماعی", icon: Globe },
   { href: "/admin/orders", label: "سفارشات", icon: Package },
   { href: "/admin/analytics", label: "گزارشات", icon: BarChart3 },
 ];

@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toPersianDigits, formatPrice } from "@/lib/utils";
-
+import { SocialFooter } from "@/components/social-footer";
 interface UserData {
   id: string;
   phone: string;

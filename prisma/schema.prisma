@@ -548,3 +548,14 @@ model ShippingMethod {
 
   @@map("shipping_methods")
 }
+
+// ==================== SOCIAL LINKS ====================
+model SocialLink {
+  id       String  @id @default(cuid())
+  platform String  // instagram, telegram, linkedin, x, youtube, aparat
+  url      String
+  order    Int     @default(0)
+  isActive Boolean @default(true)
+
+  @@map("social_links")
+}
