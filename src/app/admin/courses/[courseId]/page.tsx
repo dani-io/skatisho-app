@@ -58,7 +58,7 @@ export default function AdminCourseDetailPage() {
   // New chapter/lesson forms
   const [newChapterTitle, setNewChapterTitle] = useState("");
   const [addingLesson, setAddingLesson] = useState<string | null>(null);
-  const [newLesson, setNewLesson] = useState({ title: "", videoUrl: "", duration: 0, isFree: false });
+  const [newLesson, setNewLesson] = useState({ title: "", videoUrl: "", duration: 0, isFree: false, thumbnail: "" });
 
   useEffect(() => {
     fetch(`/api/admin/courses/${courseId}`)
@@ -124,7 +124,7 @@ export default function AdminCourseDetailPage() {
         ),
       };
     });
-    setNewLesson({ title: "", videoUrl: "", duration: 0, isFree: false });
+    setNewLesson({ title: "", videoUrl: "", duration: 0, isFree: false, thumbnail: "" });
     setAddingLesson(null);
   }
 
@@ -322,6 +322,14 @@ export default function AdminCourseDetailPage() {
                         value={newLesson.videoUrl || null}
                         onChange={(url) => setNewLesson({ ...newLesson, videoUrl: url })}
                         onClear={() => setNewLesson({ ...newLesson, videoUrl: "" })}
+                      />
+                      <FileUpload
+                        label="تصویر بندانگشتی"
+                        accept="image"
+                        folder="courses/thumbnails"
+                        value={newLesson.thumbnail || null}
+                        onChange={(url) => setNewLesson({ ...newLesson, thumbnail: url })}
+                        onClear={() => setNewLesson({ ...newLesson, thumbnail: "" })}
                       />
                       <div className="flex gap-2">
                         <input
