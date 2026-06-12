@@ -41,6 +41,8 @@ export async function GET(
   // Get mood
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  // Get cart
+  const cartData = user.cart as any[] || [];
   const mood = await db.moodLog.findFirst({
     where: { userId, createdAt: { gte: today } },
     orderBy: { createdAt: "desc" },
@@ -77,6 +79,7 @@ export async function GET(
   return NextResponse.json({
     user: { ...user, avatar: serverFileUrl(user.avatar) },
     mood: mood?.mood || null,
+    cart: cartData,
     orders,
     walletTx,
     courseAccess,

@@ -41,6 +41,7 @@ model User {
   walletBalance Int       @default(0)
   lastLoginAt   DateTime?
   lastLoginIp   String?
+  cart          Json?
   referralCode  String    @unique @default(cuid())
   referredBy    String?
 

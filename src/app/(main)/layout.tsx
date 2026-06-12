@@ -1,4 +1,5 @@
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { CartSync } from "@/components/cart-sync";
 import { InstallPrompt } from "@/components/layout/install-prompt";
 
 export default function MainLayout({
@@ -13,6 +14,7 @@ export default function MainLayout({
 
       {/* Bottom Navigation */}
       <BottomNav />
+      <CartSync />
 
       {/* PWA Install Prompt */}
       <InstallPrompt />

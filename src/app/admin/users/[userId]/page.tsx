@@ -259,6 +259,26 @@ export default function AdminUserDetailPage() {
         </div>
       )}
 
+      {/* Cart */}
+      {data.cart && data.cart.length > 0 && (
+        <div className="bg-white rounded-[var(--radius-card)] border border-orange-200 p-4 mb-4">
+          <h3 className="text-sm font-bold mb-3">🛒 سبد خرید ({toPersianDigits(data.cart.length)} محصول)</h3>
+          <div className="space-y-2">
+            {data.cart.map((item: any, i: number) => (
+              <div key={i} className="flex items-center justify-between text-xs p-2 bg-orange-50 rounded-lg">
+                <div>
+                  <p className="font-medium">{item.title}</p>
+                  <p className="text-on-surface-muted">تعداد: {toPersianDigits(item.quantity)}</p>
+                </div>
+                <span className="font-bold">{formatPrice(item.price * item.quantity)}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-orange-600 mt-2 font-medium">
+            💡 سبد پر شده ولی پرداخت نشده — شاید یه کد تخفیف کمکش کنه!
+          </p>
+        </div>
+      )}
       {/* Recent Orders */}
       {orders.length > 0 && (
         <div className="bg-white rounded-[var(--radius-card)] border border-surface-container p-4 mb-4">
