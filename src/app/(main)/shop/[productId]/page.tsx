@@ -34,6 +34,7 @@ interface Product {
   inStock: boolean;
   customizable: boolean;
   options: ProductOption[] | null;
+  images: string[];
 }
 
 const categoryLabels: Record<string, string> = {
@@ -52,6 +53,7 @@ export default function ProductDetailPage() {
   const [selections, setSelections] = useState<Record<string, string>>({});
   const { addItem, items } = useCartStore();
   const cartCount = items.reduce((acc, i) => acc + i.quantity, 0);
+  const [activeImg, setActiveImg] = useState(0);
 
   useEffect(() => {
     fetch(`/api/products/${productId}`)
@@ -59,6 +61,7 @@ export default function ProductDetailPage() {
       .then((d) => {
         setProduct(d.product);
         setRelated(d.related || []);
+        const [activeImg, setActiveImg] = useState(0);
         // Set default selections
         if (d.product?.options) {
           const defaults: Record<string, string> = {};
@@ -124,7 +127,13 @@ export default function ProductDetailPage() {
   const discount = product.originalPrice
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
-
+  const allImages = [
+    ...(product.thumbnail ? [product.thumbnail] : []),
+    ...(product.images || []).map((img: string) =>
+      img.startsWith("http") ? img : `${process.env.NEXT_PUBLIC_S3_URL || "http://192.168.10.240:9000/sktsho"}/${img}`
+    ),
+  ];
+  
   return (
     <div className="pb-28">
       {/* Header */}
@@ -140,13 +149,27 @@ export default function ProductDetailPage() {
         </Link>
       </div>
 
-      {/* Image */}
-      <div className="aspect-square bg-surface-dim mx-4 rounded-[var(--radius-card)] overflow-hidden mb-4">
-        {product.thumbnail ? (
-          <img src={product.thumbnail} alt={product.title} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <ShoppingBag className="w-16 h-16 text-on-surface-muted/20" />
+      {/* Image Gallery */}
+      <div className="mx-4 mb-4">
+        <div className="aspect-square bg-surface-dim rounded-[var(--radius-card)] overflow-hidden relative">
+          {allImages.length > 0 ? (
+            <img src={allImages[activeImg]} alt={product.title} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <ShoppingBag className="w-16 h-16 text-on-surface-muted/20" />
+            </div>
+          )}
+        </div>
+        {allImages.length > 1 && (
+          <div className="flex gap-2 mt-2 overflow-x-auto">
+            {allImages.map((img, i) => (
+              <button key={i} onClick={() => setActiveImg(i)}
+                className={`w-14 h-14 rounded-lg overflow-hidden shrink-0 border-2 transition-colors ${
+                  i === activeImg ? "border-primary" : "border-transparent"
+                }`}>
+                <img src={img} alt="" className="w-full h-full object-cover" />
+              </button>
+            ))}
           </div>
         )}
       </div>
