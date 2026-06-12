@@ -467,31 +467,17 @@ export default function ProfilePage() {
       {/* Bookmarks */}
       <div className="bg-white rounded-[var(--radius-card)] border border-surface-container p-4 mb-4">
         <h3 className="text-sm font-bold mb-3">نشان‌شده‌ها</h3>
-        <BookmarksList />
       </div>
 
-      {/* Wallet + Gift Card */}
+     {/* Wallet Summary */}
       <div className="bg-white rounded-[var(--radius-card)] border border-surface-container p-4 mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold">کیف پول</h3>
-          <span className="text-lg font-bold text-primary">{formatPrice(user.walletBalance)}</span>
-        </div>
-        <div className="border-t border-surface-container pt-3">
-          <p className="text-xs text-on-surface-muted mb-2">کارت هدیه دارید؟ کد رو وارد کنید:</p>
-          <div className="flex gap-2">
-            <input type="text" placeholder="کد کارت هدیه" value={giftCode}
-              onChange={(e) => { setGiftCode(e.target.value.toUpperCase()); setGiftMsg(null); }}
-              dir="ltr"
-              className="flex-1 border border-surface-container rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary" />
-            <Button variant="secondary" onClick={redeemGift} disabled={giftLoading || !giftCode.trim()}>
-              {giftLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Gift className="w-4 h-4 ml-1" />شارژ</>}
-            </Button>
+        <Link href="/wallet" className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-primary" />
+            <span className="text-sm font-bold">کیف پول</span>
           </div>
-          <WalletTransactions />
-          {giftMsg && (
-            <p className={`text-xs mt-2 ${giftMsg.ok ? "text-green-600" : "text-error"}`}>{giftMsg.text}</p>
-          )}
-        </div>
+          <span className="text-lg font-bold text-primary">{formatPrice(user.walletBalance)}</span>
+        </Link>
       </div>
       {/* Menu */}
       <div className="bg-white rounded-[var(--radius-card)] border border-surface-container mb-4">
