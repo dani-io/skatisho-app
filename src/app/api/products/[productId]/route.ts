@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { serverFileUrl } from "@/lib/storage";
 
 export async function GET(
   req: NextRequest,
@@ -25,5 +26,8 @@ export async function GET(
     take: 4,
   });
 
-  return NextResponse.json({ product, related });
+  return NextResponse.json({
+    product: { ...product, thumbnail: serverFileUrl(product.thumbnail) },
+    related: related.map((r: any) => ({ ...r, thumbnail: serverFileUrl(r.thumbnail) })),
+  });
 }

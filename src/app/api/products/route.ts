@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { serverFileUrl } from "@/lib/storage";
 
 export async function GET() {
   const products = await db.product.findMany({
@@ -7,5 +8,6 @@ export async function GET() {
     orderBy: { order: "asc" },
   });
 
-  return NextResponse.json({ products });
+  const result = products.map((p: any) => ({ ...p, thumbnail: serverFileUrl(p.thumbnail) }));
+  return NextResponse.json({ products: result });
 }

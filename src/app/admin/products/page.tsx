@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatPrice, toPersianDigits } from "@/lib/utils";
+import { FileUpload } from "@/components/ui/file-upload";
 
 interface OptionValue {
   label: string;
@@ -31,6 +32,7 @@ interface Product {
   isPublished: boolean;
   customizable: boolean;
   options: ProductOption[] | null;
+  thumbnail: string | null;
 }
 
 const categoryOptions = [
@@ -46,6 +48,7 @@ const emptyForm = {
   title: "", description: "", price: 0, originalPrice: 0,
   category: "INLINE_SKATE", brand: "", inStock: true, isPublished: true,
   customizable: false, options: [] as ProductOption[],
+  thumbnail: null as string | null,
 };
 
 export default function AdminProductsPage() {
@@ -84,6 +87,7 @@ export default function AdminProductsPage() {
       inStock: p.inStock,
       isPublished: p.isPublished,
       customizable: p.customizable || false,
+      thumbnail: p.thumbnail || null,
       options: p.options || [],
     });
     setEditing(p.id);
@@ -214,6 +218,14 @@ export default function AdminProductsPage() {
               <button onClick={() => setShowForm(false)}><X className="w-5 h-5" /></button>
             </div>
             <div className="space-y-3">
+            <FileUpload
+                label="تصویر محصول"
+                accept="image"
+                folder="products"
+                value={form.thumbnail}
+                onChange={(url) => setForm({ ...form, thumbnail: url })}
+                onClear={() => setForm({ ...form, thumbnail: null })}
+              />
               {/* Basic Fields */}
               <div>
                 <label className="block text-xs font-medium mb-1">عنوان</label>
