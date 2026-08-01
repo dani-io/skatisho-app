@@ -31,8 +31,6 @@ services:
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
         NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
     restart: unless-stopped
-    ports:
-      - "3000:3000"
     environment:
       # --- Core ---
       - NODE_ENV=production
