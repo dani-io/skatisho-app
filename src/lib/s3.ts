@@ -6,6 +6,7 @@ import {
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
+import { requireEnv } from "@/lib/env";
 
 /**
  * MinIO lives on the internal Docker network only. The browser never talks to
@@ -15,15 +16,8 @@ import { Upload } from "@aws-sdk/lib-storage";
 
 export type BucketKind = "private" | "public";
 
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    // Deliberately loud. A silent fallback to a LAN box is how private video
-    // ends up on a public endpoint.
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return value;
-}
+// requireEnv lives in lib/env — a silent fallback to a LAN box is how private
+// video ends up on a public endpoint.
 
 let client: S3Client | null = null;
 

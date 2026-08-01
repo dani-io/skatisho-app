@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
-
-const SECRET = new TextEncoder().encode(
-  process.env.NEXTAUTH_SECRET || "dev-secret-change-me"
-);
+import { getJwtSecret } from "@/lib/env";
 
 const PUBLIC_PATHS = ["/login", "/verify", "/api/auth"];
 
@@ -49,8 +46,12 @@ export async function proxy(req: NextRequest) {
     return deny(req, isApi);
   }
 
+  // Same key as lib/auth's createSession. Resolved outside the try so a missing
+  // JWT_SECRET surfaces as an error rather than a blanket redirect to /login.
+  const secret = getJwtSecret();
+
   try {
-    await jwtVerify(token, SECRET);
+    await jwtVerify(token, secret);
     return NextResponse.next();
   } catch {
     return deny(req, isApi);
