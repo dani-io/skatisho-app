@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { ADMIN_PHONES } from "@/lib/access";
+import { deleteFileQuiet } from "@/lib/s3";
 
-const ADMIN_PHONES = ["09123456789", "09179498400"];
 
 async function checkAdmin() {
   const session = await getSession();
@@ -75,7 +76,12 @@ export async function DELETE(req: NextRequest) {
   if (unauth) return unauth;
 
   const { id } = await req.json();
+  const banner = await db.banner.findUnique({
+    where: { id },
+    select: { imageKey: true },
+  });
   await db.banner.delete({ where: { id } });
+  await deleteFileQuiet("public", banner?.imageKey);
 
   return NextResponse.json({ ok: true });
 }

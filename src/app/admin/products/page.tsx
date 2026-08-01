@@ -7,7 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { formatPrice, toPersianDigits } from "@/lib/utils";
 import { FileUpload } from "@/components/ui/file-upload";
-import { fileUrl } from "@/lib/storage";
+import { cdnUrl } from "@/lib/storage";
 
 interface OptionValue {
   label: string;
@@ -225,6 +225,7 @@ export default function AdminProductsPage() {
             <FileUpload
                 label="تصویر محصول"
                 accept="image"
+                bucket="public"
                 folder="products"
                 value={form.thumbnail}
                 onChange={(url) => setForm({ ...form, thumbnail: url })}
@@ -283,7 +284,7 @@ export default function AdminProductsPage() {
                 <div className="grid grid-cols-3 gap-2 mb-2">
                   {form.images.map((img, i) => (
                     <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-surface-container">
-                      <img src={fileUrl(img)} alt="" className="w-full h-full object-cover" />
+                      <img src={cdnUrl(img)} alt="" className="w-full h-full object-cover" />
                       <button onClick={() => setForm({ ...form, images: form.images.filter((_, j) => j !== i) })}
                         className="absolute top-1 left-1 w-5 h-5 bg-black/50 rounded-full flex items-center justify-center">
                         <X className="w-3 h-3 text-white" />
@@ -295,6 +296,7 @@ export default function AdminProductsPage() {
                   <FileUpload
                     label=""
                     accept="image"
+                    bucket="public"
                     folder="products/gallery"
                     value={null}
                     onChange={(url) => setForm({ ...form, images: [...form.images, url] })}

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateOTP, storeOTP, sendSMS } from "@/lib/auth";
+import { getSmsProvider } from "@/lib/sms";
 
 export async function POST(req: NextRequest) {
   try {
     const { phone } = await req.json();
 
-    // Validate phone
+    // Validate phone (frontend submits the stored 09xxxxxxxxx form)
     if (!phone || !/^09\d{9}$/.test(phone)) {
       return NextResponse.json(
         { error: "شماره تلفن نامعتبر است" },
@@ -13,13 +13,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Generate and store OTP
-    const code = generateOTP();
-    storeOTP(phone, code);
-
-    // Send SMS
-    const sent = await sendSMS(phone, code);
-    if (!sent) {
+    // Delegate the full send flow (generate/store/send) to the provider.
+    const result = await getSmsProvider().sendOtp(phone);
+    if (!result.ok) {
+      if (result.error === "rate_limited") {
+        return NextResponse.json(
+          { error: "تعداد درخواست‌ها زیاد است. کمی صبر کنید" },
+          { status: 429 }
+        );
+      }
       return NextResponse.json(
         { error: "خطا در ارسال پیامک" },
         { status: 500 }

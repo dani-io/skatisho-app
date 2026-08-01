@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/access";
+import { deleteFileQuiet } from "@/lib/s3";
 
 export async function GET() {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const products = await db.product.findMany({
     orderBy: { order: "asc" },
   });
@@ -9,6 +14,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const body = await req.json();
   const product = await db.product.create({
     data: {
@@ -31,6 +39,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const body = await req.json();
   const product = await db.product.update({
     where: { id: body.id },
@@ -53,9 +64,23 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+
+  const product = await db.product.findUnique({
+    where: { id },
+    select: { thumbnail: true, images: true },
+  });
+
   await db.product.delete({ where: { id } });
+
+  for (const key of [product?.thumbnail, ...(product?.images ?? [])]) {
+    await deleteFileQuiet("public", key);
+  }
+
   return NextResponse.json({ success: true });
 }

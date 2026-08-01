@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { cdnUrl } from "@/lib/storage";
 
 export async function GET() {
   const coaches = await db.coach.findMany({
@@ -13,5 +14,8 @@ export async function GET() {
     orderBy: { name: "asc" },
   });
 
-  return NextResponse.json({ coaches });
+  // Coach avatars are marketing content: public bucket, served from the CDN.
+  return NextResponse.json({
+    coaches: coaches.map((c) => ({ ...c, avatar: cdnUrl(c.avatar) })),
+  });
 }

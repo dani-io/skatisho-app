@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Image as ImageIcon, Plus, Trash2, X, Edit, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileUpload } from "@/components/ui/file-upload";
-import { fileUrl } from "@/lib/storage";
+import { cdnUrl } from "@/lib/storage";
 
 interface Banner {
   id: string;
@@ -126,6 +126,7 @@ export default function AdminBannersPage() {
             <FileUpload
               label="تصویر بنر"
               accept="image"
+              bucket="public"
               folder="banners"
               value={imageKey}
               onChange={setImageKey}
@@ -180,7 +181,7 @@ export default function AdminBannersPage() {
               className={`bg-white rounded-[var(--radius-card)] border p-4 ${b.isActive ? "border-surface-container" : "border-red-200 bg-red-50/30"}`}>
               <div className="flex items-start gap-4">
                 <div className="w-20 h-[60px] shrink-0 rounded-xl overflow-hidden bg-surface-dim">
-                  <img src={fileUrl(b.imageKey)} alt={b.title || ""} className="w-full h-full object-cover" />
+                  <img src={cdnUrl(b.imageKey)} alt={b.title || ""} className="w-full h-full object-cover" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold truncate">{b.title || "بدون عنوان"}</p>

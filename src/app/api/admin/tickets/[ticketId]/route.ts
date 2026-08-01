@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { ADMIN_PHONES } from "@/lib/access";
 
-const ADMIN_PHONES = ["09123456789", "09179498400"];
 
 // GET: ticket detail with messages
 export async function GET(

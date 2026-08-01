@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { createNotification } from "@/lib/notifications";
+import { ADMIN_PHONES } from "@/lib/access";
 
-const ADMIN_PHONES = ["09123456789", "09179498400"];
 
 export async function POST(
   req: NextRequest,

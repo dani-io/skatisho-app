@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { serverFileUrl } from "@/lib/storage";
+import { canAccessLesson } from "@/lib/access";
+import { cdnUrl, lessonVideoUrl } from "@/lib/storage";
 
 export async function GET(
   req: NextRequest,
@@ -21,24 +22,24 @@ export async function GET(
     },
   });
 
-  if (!lesson) {
+  // 404 both for a missing lesson and for one that belongs to another course.
+  // Answering 403 to the latter would confirm the lesson exists.
+  if (!lesson || lesson.chapter.courseId !== courseId) {
     return NextResponse.json({ error: "درس یافت نشد" }, { status: 404 });
   }
 
-  // Check access: free lesson OR VIP subscription OR individual purchase
-  if (!lesson.isFree && session) {
-    const subscription = await db.subscription.findUnique({
-      where: { userId: session.userId },
-    });
-    const hasVIP = !!subscription?.isActive && new Date(subscription.endDate) > new Date();
+  const allowed = await canAccessLesson(session?.userId ?? null, {
+    isFree: lesson.isFree,
+    courseId: lesson.chapter.courseId,
+  });
 
-    const hasPurchased = await db.courseAccess.findUnique({
-      where: { userId_courseId: { userId: session.userId, courseId: courseId as string } },
-    });
-
-    if (!hasVIP && !hasPurchased) {
-      return NextResponse.json({ error: "برای مشاهده این درس، اشتراک VIP یا خرید دوره نیاز دارید" }, { status: 403 });
-    }
+  if (!allowed) {
+    return session
+      ? NextResponse.json(
+          { error: "برای مشاهده این درس، اشتراک VIP یا خرید دوره نیاز دارید" },
+          { status: 403 }
+        )
+      : NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
   // Get progress
@@ -52,5 +53,14 @@ export async function GET(
     completed = progress?.completed ?? false;
   }
 
-  return NextResponse.json({ lesson: { ...lesson, videoUrl: serverFileUrl(lesson.videoUrl), thumbnail: serverFileUrl(lesson.thumbnail) }, completed });
+  return NextResponse.json({
+    lesson: {
+      ...lesson,
+      // Not a storage URL: the protected route that re-checks access and
+      // streams the bytes. Thumbnails are public and come from the CDN.
+      videoUrl: lessonVideoUrl(lesson.chapter.courseId, lesson.id),
+      thumbnail: cdnUrl(lesson.thumbnail),
+    },
+    completed,
+  });
 }

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { serverFileUrl } from "@/lib/storage";
+import { getCourseAccessDetail } from "@/lib/access";
+import { cdnUrl } from "@/lib/storage";
 
 export async function GET(
   req: NextRequest,
@@ -37,23 +38,15 @@ export async function GET(
     return NextResponse.json({ error: "دوره یافت نشد" }, { status: 404 });
   }
 
-  // Check access: VIP subscription OR individual course purchase
-  let hasAccess = false;
-  let hasVIP = false;
-  let hasPurchased = false;
+  // Advisory flags for the UI. The authoritative gate lives in the video
+  // route, which re-checks on every request.
+  const { hasVIP, hasPurchased, hasAccess } = await getCourseAccessDetail(
+    session?.userId ?? null,
+    courseId
+  );
+
   let progress: Record<string, boolean> = {};
   if (session) {
-    const subscription = await db.subscription.findUnique({
-      where: { userId: session.userId },
-    });
-    hasVIP = !!subscription?.isActive && new Date(subscription.endDate) > new Date();
-
-    const courseAccess = await db.courseAccess.findUnique({
-      where: { userId_courseId: { userId: session.userId, courseId } },
-    });
-    hasPurchased = !!courseAccess;
-    hasAccess = hasVIP || hasPurchased;;
-
     // Get user progress
     const userProgress = await db.lessonProgress.findMany({
       where: { userId: session.userId },
@@ -67,8 +60,9 @@ export async function GET(
   return NextResponse.json({
     course: {
       ...course,
-      thumbnail: serverFileUrl(course.thumbnail),
-      chapters: course.chapters.map((ch: any) => ({ ...ch, lessons: ch.lessons.map((l: any) => ({ ...l, thumbnail: serverFileUrl(l.thumbnail) })) })),
+      thumbnail: cdnUrl(course.thumbnail),
+      coach: { ...course.coach, avatar: cdnUrl(course.coach.avatar) },
+      chapters: course.chapters.map((ch: any) => ({ ...ch, lessons: ch.lessons.map((l: any) => ({ ...l, thumbnail: cdnUrl(l.thumbnail) })) })),
       hasAccess,
       hasVIP,
       hasPurchased,

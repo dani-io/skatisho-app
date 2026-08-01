@@ -288,9 +288,12 @@ export default function ProfilePage() {
               onChange={async (e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
-                const fd = new FormData();
-                fd.append("file", file);
-                const res = await fetch("/api/auth/avatar", { method: "POST", body: fd });
+                // Raw body so the server can stream it into storage.
+                const res = await fetch("/api/auth/avatar", {
+                  method: "POST",
+                  headers: { "Content-Type": file.type },
+                  body: file,
+                });
                 const data = await res.json();
                 if (data.avatar) {
                   setUser((prev: any) => prev ? { ...prev, avatar: data.avatar } : prev);

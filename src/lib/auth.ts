@@ -7,62 +7,8 @@ const SECRET = new TextEncoder().encode(
 
 const COOKIE_NAME = "skatisho-session";
 
-// ==================== OTP STORE (in-memory for dev) ====================
-// In production, use Redis
-const otpStore = new Map<string, { code: string; expires: number }>();
-
-export function generateOTP(): string {
-  // In dev mode, always return 123456
-  if (process.env.NODE_ENV !== "production") {
-    return "123456";
-  }
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
-export function storeOTP(phone: string, code: string) {
-  otpStore.set(phone, {
-    code,
-    expires: Date.now() + 2 * 60 * 1000, // 2 minutes
-  });
-}
-
-export function verifyOTP(phone: string, code: string): boolean {
-  // Dev mode: accept 123456
-  if (code === "123456") {
-    return true;
-  }
-
-  const stored = otpStore.get(phone);
-  if (!stored) return false;
-  if (Date.now() > stored.expires) {
-    otpStore.delete(phone);
-    return false;
-  }
-  if (stored.code !== code) return false;
-
-  otpStore.delete(phone);
-  return true;
-}
-
-// ==================== SMS (Kavenegar) ====================
-export async function sendSMS(phone: string, code: string): Promise<boolean> {
-  const apiKey = process.env.SMS_API_KEY;
-
-  // Dev mode: just log
-  if (!apiKey || process.env.NODE_ENV !== "production") {
-    console.log(`📱 OTP for ${phone}: ${code}`);
-    return true;
-  }
-
-  try {
-    const url = `https://api.kavenegar.com/v1/${apiKey}/verify/lookup.json?receptor=${phone}&token=${code}&template=skatisho-verify`;
-    const res = await fetch(url);
-    return res.ok;
-  } catch {
-    console.error("SMS send failed");
-    return false;
-  }
-}
+// OTP send/verify now lives in the provider-agnostic layer at lib/sms.
+// This module owns only the jose session JWT.
 
 // ==================== JWT SESSION ====================
 export async function createSession(userId: string, phone: string) {

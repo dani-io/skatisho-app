@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { serverFileUrl } from "@/lib/storage";
+import { cdnUrl } from "@/lib/storage";
 
 export async function GET() {
   const courses = await db.course.findMany({
@@ -20,11 +20,11 @@ export async function GET() {
     id: course.id,
     title: course.title,
     description: course.description,
-    thumbnail: serverFileUrl(course.thumbnail),
+    thumbnail: cdnUrl(course.thumbnail),
     category: course.category,
     level: course.level,
     coachName: course.coach.name,
-    coachAvatar: course.coach.avatar,
+    coachAvatar: cdnUrl(course.coach.avatar),
     lessonsCount: course.chapters.reduce(
       (acc, ch) => acc + ch.lessons.length,
       0

@@ -1,15 +1,17 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Upload, X, Loader2, Image, Film, CheckCircle } from "lucide-react";
-import { fileUrl } from "@/lib/storage";
+import { X, Loader2, Image, Film, CheckCircle } from "lucide-react";
+import { cdnUrl } from "@/lib/storage";
 
 interface FileUploadProps {
   label: string;
   accept: "image" | "video";
+  /** Explicit destination bucket — never inferred from the file. */
+  bucket: "private" | "public";
   folder: string;
   value?: string | null;
-  onChange: (url: string) => void;
+  onChange: (key: string) => void;
   onClear?: () => void;
 }
 
@@ -18,7 +20,15 @@ const ACCEPT_MAP = {
   video: "video/mp4,video/webm,video/quicktime",
 };
 
-export function FileUpload({ label, accept, folder, value, onChange, onClear }: FileUploadProps) {
+export function FileUpload({
+  label,
+  accept,
+  bucket,
+  folder,
+  value,
+  onChange,
+  onClear,
+}: FileUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
@@ -30,34 +40,48 @@ export function FileUpload({ label, accept, folder, value, onChange, onClear }: 
 
     setUploading(true);
     setError("");
-    setProgress(10);
+    setProgress(0);
+
+    // The file is sent as the raw request body, not multipart, so the server
+    // can pipe it into storage instead of buffering it. XHR is used over fetch
+    // for real upload progress.
+    const url = `/api/upload?folder=${encodeURIComponent(
+      folder
+    )}&bucket=${bucket}`;
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("folder", folder);
+      const key = await new Promise<string>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", url);
+        xhr.setRequestHeader("Content-Type", file.type);
 
-      setProgress(30);
+        xhr.upload.onprogress = (ev) => {
+          if (ev.lengthComputable) {
+            setProgress(Math.round((ev.loaded / ev.total) * 100));
+          }
+        };
 
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
+        xhr.onload = () => {
+          let data: { key?: string; error?: string } = {};
+          try {
+            data = JSON.parse(xhr.responseText);
+          } catch {
+            /* non-JSON error body */
+          }
+          if (xhr.status >= 200 && xhr.status < 300 && data.key) {
+            resolve(data.key);
+          } else {
+            reject(new Error(data.error || "خطا در آپلود"));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error("خطا در آپلود فایل"));
+        xhr.send(file);
       });
 
-      setProgress(80);
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "خطا در آپلود");
-        return;
-      }
-
-      setProgress(100);
-      onChange(data.key);
-
-    } catch {
-      setError("خطا در آپلود فایل");
+      onChange(key);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "خطا در آپلود فایل");
     } finally {
       setUploading(false);
       setProgress(0);
@@ -73,8 +97,8 @@ export function FileUpload({ label, accept, folder, value, onChange, onClear }: 
 
       {value ? (
         <div className="relative border border-surface-container rounded-xl overflow-hidden">
-          {accept === "image" ? (
-            <img src={fileUrl(value)} alt="" className="w-full h-32 object-cover" />
+          {accept === "image" && bucket === "public" ? (
+            <img src={cdnUrl(value)} alt="" className="w-full h-32 object-cover" />
           ) : (
             <div className="flex items-center gap-3 p-3 bg-surface-dim">
               <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />
@@ -99,7 +123,7 @@ export function FileUpload({ label, accept, folder, value, onChange, onClear }: 
           {uploading ? (
             <>
               <Loader2 className="w-6 h-6 text-primary animate-spin" />
-              <span className="text-xs text-on-surface-muted">در حال آپلود...</span>
+              <span className="text-xs text-on-surface-muted">در حال آپلود... {progress}%</span>
               <div className="w-full h-1.5 bg-surface-dim rounded-full overflow-hidden mt-1">
                 <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${progress}%` }} />
               </div>

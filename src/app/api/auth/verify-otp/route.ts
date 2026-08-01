@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyOTP, createSession } from "@/lib/auth";
+import { createSession } from "@/lib/auth";
+import { getSmsProvider } from "@/lib/sms";
 import { db } from "@/lib/db";
 
 export async function POST(req: NextRequest) {
@@ -14,8 +15,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verify OTP
-    const valid = verifyOTP(phone, code);
+    // Verify OTP via the selected provider
+    const valid = await getSmsProvider().verifyOtp(phone, code);
     if (!valid) {
       return NextResponse.json(
         { error: "کد تأیید نادرست است" },

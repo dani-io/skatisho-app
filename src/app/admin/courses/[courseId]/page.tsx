@@ -193,6 +193,7 @@ export default function AdminCourseDetailPage() {
             <FileUpload
             label="تصویر کاور دوره"
             accept="image"
+            bucket="public"
             folder="courses/covers"
             value={course.thumbnail}
             onChange={(url) => setCourse({ ...course, thumbnail: url })}
@@ -318,6 +319,7 @@ export default function AdminCourseDetailPage() {
                       <FileUpload
                         label=""
                         accept="video"
+                        bucket="private"
                         folder="courses/videos"
                         value={newLesson.videoUrl || null}
                         onChange={(url) => setNewLesson({ ...newLesson, videoUrl: url })}
@@ -326,6 +328,7 @@ export default function AdminCourseDetailPage() {
                       <FileUpload
                         label="تصویر بندانگشتی"
                         accept="image"
+                        bucket="public"
                         folder="courses/thumbnails"
                         value={newLesson.thumbnail || null}
                         onChange={(url) => setNewLesson({ ...newLesson, thumbnail: url })}

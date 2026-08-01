@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/access";
+import { deleteFileQuiet } from "@/lib/s3";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ courseId: string; chapterId: string }> }
 ) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const { chapterId } = await params;
   const body = await req.json();
 
@@ -30,6 +35,9 @@ export async function POST(
 }
 
 export async function PUT(req: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const body = await req.json();
 
   const lesson = await db.lesson.update({
@@ -48,10 +56,23 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
+  const lesson = await db.lesson.findUnique({
+    where: { id },
+    select: { videoUrl: true, thumbnail: true },
+  });
+
   await db.lesson.delete({ where: { id } });
+
+  // Video lives in the private bucket, its thumbnail in the public one.
+  await deleteFileQuiet("private", lesson?.videoUrl);
+  await deleteFileQuiet("public", lesson?.thumbnail);
+
   return NextResponse.json({ success: true });
 }

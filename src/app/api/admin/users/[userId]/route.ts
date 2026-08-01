@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { serverFileUrl } from "@/lib/storage";
+import { userAvatarUrl } from "@/lib/storage";
+import { ADMIN_PHONES } from "@/lib/access";
 
-const ADMIN_PHONES = ["09123456789", "09179498400"];
 
 export async function GET(
   req: NextRequest,
@@ -77,7 +77,7 @@ export async function GET(
   });
 
   return NextResponse.json({
-    user: { ...user, avatar: serverFileUrl(user.avatar) },
+    user: { ...user, avatar: user.avatar ? userAvatarUrl(user.id, user.avatar) : null },
     mood: mood?.mood || null,
     cart: cartData,
     orders,

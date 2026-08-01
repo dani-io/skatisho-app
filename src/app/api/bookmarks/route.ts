@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { serverFileUrl } from "@/lib/storage";
+import { cdnUrl } from "@/lib/storage";
 
 // GET: list user's bookmarks
 export async function GET() {
@@ -35,12 +35,12 @@ export async function GET() {
     ...b,
     lesson: {
       ...b.lesson,
-      thumbnail: serverFileUrl(b.lesson.thumbnail),
+      thumbnail: cdnUrl(b.lesson.thumbnail),
       chapter: {
         ...b.lesson.chapter,
         course: {
           ...b.lesson.chapter.course,
-          thumbnail: serverFileUrl(b.lesson.chapter.course.thumbnail),
+          thumbnail: cdnUrl(b.lesson.chapter.course.thumbnail),
         },
       },
     },

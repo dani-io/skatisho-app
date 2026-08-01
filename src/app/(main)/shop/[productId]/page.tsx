@@ -8,6 +8,7 @@ import {
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { formatPrice, toPersianDigits, cn } from "@/lib/utils";
+import { cdnUrl } from "@/lib/storage";
 import { useCartStore } from "@/store/cart";
 
 interface OptionValue {
@@ -127,11 +128,10 @@ export default function ProductDetailPage() {
   const discount = product.originalPrice
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
+  // thumbnail is already absolutised by the API; the gallery keys are not.
   const allImages = [
     ...(product.thumbnail ? [product.thumbnail] : []),
-    ...(product.images || []).map((img: string) =>
-      img.startsWith("http") ? img : `${process.env.NEXT_PUBLIC_S3_URL || "http://192.168.10.240:9000/sktsho"}/${img}`
-    ),
+    ...(product.images || []).map((img: string) => cdnUrl(img)),
   ];
   
   return (

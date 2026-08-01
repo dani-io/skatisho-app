@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { cdnUrl } from "@/lib/storage";
 
 export async function GET(
   req: NextRequest,
@@ -45,7 +46,7 @@ export async function GET(
       id: coach.id,
       name: coach.name,
       bio: coach.bio,
-      avatar: coach.avatar,
+      avatar: cdnUrl(coach.avatar),
       specialty: coach.specialty,
       coursesCount: coach.courses.length,
       courses: coursesWithStats,

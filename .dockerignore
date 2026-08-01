@@ -1,0 +1,39 @@
+# Dependencies — reinstalled inside the image via `npm ci`
+node_modules
+
+# Next.js build output — rebuilt inside the image
+.next
+out
+
+# Secrets — must NEVER enter the build context or image
+.env
+.env.*
+!.env.example
+
+# Version control
+.git
+.gitignore
+
+# Local dev / editor / OS noise
+.vscode
+.idea
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# Docker files themselves (not needed inside the context)
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Test / media artifacts that must not bloat the context
+*.mp4
+*.mov
+*.mkv
+coverage
+.turbo
+
+# Docs / misc
+README.md
+*.md

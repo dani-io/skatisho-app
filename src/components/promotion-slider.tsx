@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { fileUrl } from "@/lib/storage";
+import { cdnUrl } from "@/lib/storage";
 
 interface Slide {
   id: string;
@@ -81,7 +81,7 @@ export default function PromotionSlider() {
             className="snap-start min-w-full rounded-[var(--radius-card)] overflow-hidden relative h-[160px] block"
           >
             <img
-              src={fileUrl(slide.imageKey)}
+              src={cdnUrl(slide.imageKey)}
               alt={slide.title || ""}
               className="absolute inset-0 w-full h-full object-cover"
             />

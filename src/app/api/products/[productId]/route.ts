@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { serverFileUrl } from "@/lib/storage";
+import { cdnUrl } from "@/lib/storage";
 
 export async function GET(
   req: NextRequest,
@@ -27,7 +27,7 @@ export async function GET(
   });
 
   return NextResponse.json({
-    product: { ...product, thumbnail: serverFileUrl(product.thumbnail) },
-    related: related.map((r: any) => ({ ...r, thumbnail: serverFileUrl(r.thumbnail) })),
+    product: { ...product, thumbnail: cdnUrl(product.thumbnail) },
+    related: related.map((r: any) => ({ ...r, thumbnail: cdnUrl(r.thumbnail) })),
   });
 }
