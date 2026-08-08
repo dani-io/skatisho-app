@@ -63,7 +63,7 @@ function VerifyForm() {
         if (data.user?.isNew) {
           router.push("/onboarding");
         } else {
-          router.push("/");
+          router.push("/app");
         }
       }
     } catch {

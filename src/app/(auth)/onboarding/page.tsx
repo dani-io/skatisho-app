@@ -37,7 +37,7 @@ export default function OnboardingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, goal, skillLevel: level }),
       });
-      router.push("/");
+      router.push("/app");
     } catch {
       // handle error
     } finally {

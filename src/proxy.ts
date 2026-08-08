@@ -21,6 +21,15 @@ export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const isApi = pathname.startsWith("/api/");
 
+  // The public marketing landing. This is deliberately an exact `===` match and
+  // deliberately NOT an entry in PUBLIC_PATHS: those are matched with
+  // startsWith, so a "/" there would prefix-match every path and disable the
+  // gate entirely. Only the root itself is public; "/profile" and friends still
+  // fall through to the session check below.
+  if (pathname === "/") {
+    return NextResponse.next();
+  }
+
   // Allow public paths
   if (PUBLIC_PATHS.some((path) => pathname.startsWith(path))) {
     return NextResponse.next();

@@ -11,7 +11,7 @@ const tabs = [
   { href: "/tickets", label: "پشتیبانی", icon: MessageSquare, badge: true },
   { href: "/shop", label: "فروشگاه", icon: ShoppingBag },
   { href: "/courses", label: "آکادمی", icon: GraduationCap },
-  { href: "/", label: "خانه", icon: Home },
+  { href: "/app", label: "خانه", icon: Home },
 ];
 
 export function BottomNav() {
@@ -42,8 +42,8 @@ export function BottomNav() {
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
         {tabs.map((tab) => {
           const isActive =
-            tab.href === "/"
-              ? pathname === "/"
+            tab.href === "/app"
+              ? pathname === "/app"
               : pathname.startsWith(tab.href);
 
           return (
