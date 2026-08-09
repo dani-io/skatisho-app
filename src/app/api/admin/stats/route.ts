@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/access";
 
 export async function GET() {
-  const session = await getSession();
-  if (!session) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const now = new Date();
   const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
