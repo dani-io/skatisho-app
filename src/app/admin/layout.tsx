@@ -23,6 +23,7 @@ import {
   HelpCircle,
   Truck,
   Globe,
+  ShieldCheck,
 } from "lucide-react";
 import {
   cn } from "@/lib/utils";
@@ -42,6 +43,7 @@ const NAV_ITEMS = [
   { href: "/admin/social", label: "شبکه‌های اجتماعی", icon: Globe },
   { href: "/admin/orders", label: "سفارشات", icon: Package },
   { href: "/admin/analytics", label: "گزارشات", icon: BarChart3 },
+  { href: "/admin/admins", label: "مدیران", icon: ShieldCheck },
 ];
 
 export default function AdminLayout({
@@ -55,7 +57,13 @@ export default function AdminLayout({
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // The sign-in screen lives under /admin but must render for a signed-out
+  // visitor — running the guard here would bounce the very people who came to
+  // log in. It gets no sidebar either; it is not part of the panel.
+  const isLoginPage = pathname === "/admin/login";
+
   useEffect(() => {
+    if (isLoginPage) return;
     fetch("/api/admin/check")
       .then((r) => {
         if (!r.ok) {
@@ -65,7 +73,9 @@ export default function AdminLayout({
         setAuthorized(true);
       })
       .finally(() => setLoading(false));
-  }, [router]);
+  }, [router, isLoginPage]);
+
+  if (isLoginPage) return <>{children}</>;
 
   if (loading) {
     return (

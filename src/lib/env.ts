@@ -28,3 +28,30 @@ export function getJwtSecret(): Uint8Array {
   }
   return jwtSecret;
 }
+
+/**
+ * Public origin, with any trailing slash removed so callers can concatenate a
+ * path without producing a double slash (Google rejects a redirect_uri that
+ * does not match the registered one byte for byte).
+ */
+export function getSiteUrl(): string {
+  return requireEnv("NEXT_PUBLIC_SITE_URL").replace(/\/+$/, "");
+}
+
+export interface GoogleOAuthConfig {
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
+}
+
+/**
+ * Lazy like everything else here: a deploy without Google credentials still
+ * builds and still serves the OTP flow. Only the two Google routes throw.
+ */
+export function getGoogleOAuthConfig(): GoogleOAuthConfig {
+  return {
+    clientId: requireEnv("GOOGLE_CLIENT_ID"),
+    clientSecret: requireEnv("GOOGLE_CLIENT_SECRET"),
+    redirectUri: `${getSiteUrl()}/api/auth/google/callback`,
+  };
+}

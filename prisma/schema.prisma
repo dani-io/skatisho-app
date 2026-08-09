@@ -11,7 +11,10 @@ datasource db {
 
 model User {
   id            String    @id @default(cuid())
-  phone         String    @unique
+  // Nullable: an admin created via the allowlist signs in with Google and may
+  // never have a phone. OTP signup still always sets it. Postgres allows many
+  // NULLs under a UNIQUE index, so uniqueness still holds for real numbers.
+  phone         String?   @unique
   // Nullable: OTP users sign up with a phone only and never get an email.
   // Populated for admins who sign in via an external identity provider.
   email         String?   @unique

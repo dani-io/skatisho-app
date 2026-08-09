@@ -123,7 +123,9 @@ export async function POST(req: NextRequest) {
       amount,
       description,
       callbackUrl,
-      phone: user?.phone,
+      // phone is nullable since Google-only admins have none; Zarinpal's
+      // optional mobile metadata wants undefined rather than null.
+      phone: user?.phone ?? undefined,
     });
 
     await db.payment.update({

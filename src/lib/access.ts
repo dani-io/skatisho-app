@@ -34,6 +34,20 @@ export function isAdminSession(
 }
 
 /**
+ * Users who hold admin access solely through the legacy ADMIN_PHONES fallback —
+ * i.e. they are NOT role=ADMIN yet. The allowlist screen lists them read-only so
+ * it doesn't misrepresent who can actually get in. Lives here so ADMIN_PHONES
+ * stays confined to this module.
+ */
+export async function listLegacyPhoneAdmins() {
+  if (ADMIN_PHONES.length === 0) return [];
+  return db.user.findMany({
+    where: { phone: { in: ADMIN_PHONES }, role: { not: "ADMIN" } },
+    select: { id: true, name: true, phone: true, email: true },
+  });
+}
+
+/**
  * Returns the session only if it belongs to an admin, else null.
  */
 export async function getAdminSession() {

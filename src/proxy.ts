@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { getJwtSecret } from "@/lib/env";
 
-const PUBLIC_PATHS = ["/login", "/verify", "/api/auth"];
+/**
+ * Matched with startsWith. "/admin/login" is the admin Google sign-in screen and
+ * must be reachable with no session — note it does NOT open "/admin", since
+ * "/admin" is not prefixed by "/admin/login". The admin panel itself stays
+ * gated. "/api/auth" already covers the Google routes.
+ */
+const PUBLIC_PATHS = ["/login", "/verify", "/api/auth", "/admin/login"];
 
 /**
  * Coarse gate only. It redirects browsers to the login page and answers API

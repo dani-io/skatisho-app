@@ -15,7 +15,11 @@ export type SessionRole = "USER" | "ADMIN";
 
 export interface SessionPayload {
   userId: string;
-  phone: string;
+  /**
+   * Null for admins who signed in with Google and have no phone on record.
+   * isAdminPhone already treats null as "not a legacy phone admin".
+   */
+  phone: string | null;
   /**
    * Optional on purpose. Tokens minted before the role claim existed are valid
    * for up to 30 days, and they carry no `role`. Readers must treat a missing
@@ -27,7 +31,7 @@ export interface SessionPayload {
 // ==================== JWT SESSION ====================
 export async function createSession(
   userId: string,
-  phone: string,
+  phone: string | null,
   role: SessionRole = "USER"
 ) {
   const token = await new SignJWT({ userId, phone, role })
