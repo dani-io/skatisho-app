@@ -1,24 +1,15 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { ADMIN_PHONES } from "@/lib/access";
+import { requireAdmin } from "@/lib/access";
 
-// Admin phone numbers - add your phone here
-
+/**
+ * Backs the client-side guard in src/app/admin/layout.tsx. It deliberately
+ * shares requireAdmin with the admin APIs: when this route and the data routes
+ * disagreed about what "admin" meant, the panel could render for someone every
+ * one of its API calls would reject.
+ */
 export async function GET() {
-  const session = await getSession();
-  if (!session) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-
-  const user = await db.user.findUnique({
-    where: { id: session.userId },
-    select: { phone: true },
-  });
-
-  if (!user || !ADMIN_PHONES.includes(user.phone)) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   return NextResponse.json({ admin: true });
 }

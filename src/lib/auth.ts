@@ -7,9 +7,30 @@ const COOKIE_NAME = "skatisho-session";
 // OTP send/verify now lives in the provider-agnostic layer at lib/sms.
 // This module owns only the jose session JWT.
 
+/**
+ * Mirrors the Prisma `Role` enum, declared structurally so this module (and the
+ * proxy, which must stay Prisma-free) never pulls in the client at runtime.
+ */
+export type SessionRole = "USER" | "ADMIN";
+
+export interface SessionPayload {
+  userId: string;
+  phone: string;
+  /**
+   * Optional on purpose. Tokens minted before the role claim existed are valid
+   * for up to 30 days, and they carry no `role`. Readers must treat a missing
+   * role as USER — never as an error and never as ADMIN.
+   */
+  role?: SessionRole;
+}
+
 // ==================== JWT SESSION ====================
-export async function createSession(userId: string, phone: string) {
-  const token = await new SignJWT({ userId, phone })
+export async function createSession(
+  userId: string,
+  phone: string,
+  role: SessionRole = "USER"
+) {
+  const token = await new SignJWT({ userId, phone, role })
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime("30d")
     .sign(getJwtSecret());
@@ -35,7 +56,7 @@ export async function getSession() {
 
   try {
     const { payload } = await jwtVerify(token, secret);
-    return payload as { userId: string; phone: string };
+    return payload as unknown as SessionPayload;
   } catch {
     return null;
   }

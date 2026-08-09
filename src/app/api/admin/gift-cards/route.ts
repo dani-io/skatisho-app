@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { ADMIN_PHONES } from "@/lib/access";
+import { requireAdmin } from "@/lib/access";
 
 
 function generateCode(): string {
@@ -13,10 +12,8 @@ function generateCode(): string {
 
 // GET: list gift cards
 export async function GET() {
-  const session = await getSession();
-  if (!session || !ADMIN_PHONES.includes(session.phone)) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const cards = await db.giftCard.findMany({
     orderBy: { createdAt: "desc" },
@@ -27,10 +24,8 @@ export async function GET() {
 
 // POST: create gift card(s)
 export async function POST(req: NextRequest) {
-  const session = await getSession();
-  if (!session || !ADMIN_PHONES.includes(session.phone)) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const { amount, scope, count, expiresAt } = await req.json();
 
@@ -58,10 +53,8 @@ export async function POST(req: NextRequest) {
 
 // DELETE
 export async function DELETE(req: NextRequest) {
-  const session = await getSession();
-  if (!session || !ADMIN_PHONES.includes(session.phone)) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const { id } = await req.json();
   await db.giftCard.delete({ where: { id } });

@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { userAvatarUrl } from "@/lib/storage";
-import { ADMIN_PHONES } from "@/lib/access";
+import { requireAdmin } from "@/lib/access";
 
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
-  const session = await getSession();
-  if (!session || !ADMIN_PHONES.includes(session.phone)) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const { userId } = await params;
 
@@ -92,10 +89,8 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
-  const session = await getSession();
-  if (!session || !ADMIN_PHONES.includes(session.phone)) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const { userId } = await params;
   const body = await req.json();
@@ -159,10 +154,8 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
-  const session = await getSession();
-  if (!session || !ADMIN_PHONES.includes(session.phone)) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const { userId } = await params;
   await db.user.delete({ where: { id: userId } });

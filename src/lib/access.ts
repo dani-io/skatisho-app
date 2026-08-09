@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSession } from "@/lib/auth";
+import { getSession, type SessionPayload } from "@/lib/auth";
 
 // Single source of truth for admin identity. Previously this literal was
 // copy-pasted into 13 route files; the mechanism is unchanged, the definition
@@ -12,11 +12,33 @@ export function isAdminPhone(phone: string | null | undefined): boolean {
 }
 
 /**
+ * THE definition of admin-ness. Every gate in the app resolves to this one
+ * predicate — do not re-implement it inline in a route.
+ *
+ * Two ways to qualify, deliberately:
+ *   1. role === "ADMIN" — the real, forward-looking check, backed by the DB
+ *      column and carried in the token.
+ *   2. phone in ADMIN_PHONES — a transitional fallback. Sessions minted before
+ *      the role claim existed stay valid for 30 days and carry no role, and no
+ *      user row has role=ADMIN until someone sets it. Without this, promoting
+ *      the schema would lock every current admin out.
+ *
+ * Path 2 is temporary. Once admin rows carry role=ADMIN and the old tokens have
+ * aged out, delete ADMIN_PHONES and the second clause with it.
+ */
+export function isAdminSession(
+  session: SessionPayload | null | undefined
+): boolean {
+  if (!session) return false;
+  return session.role === "ADMIN" || isAdminPhone(session.phone);
+}
+
+/**
  * Returns the session only if it belongs to an admin, else null.
  */
 export async function getAdminSession() {
   const session = await getSession();
-  if (!session || !isAdminPhone(session.phone)) return null;
+  if (!isAdminSession(session)) return null;
   return session;
 }
 
@@ -32,7 +54,7 @@ export async function requireAdmin(): Promise<NextResponse | null> {
   if (!session) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  if (!isAdminPhone(session.phone)) {
+  if (!isAdminSession(session)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
   return null;
@@ -116,7 +138,10 @@ export async function canAccessAvatar(
 
   const viewer = await db.user.findUnique({
     where: { id: userId },
-    select: { phone: true },
+    select: { phone: true, role: true },
   });
-  return isAdminPhone(viewer?.phone);
+  if (!viewer) return false;
+  // Same two-path rule as isAdminSession, resolved from the row rather than the
+  // token because this is called with a bare userId.
+  return viewer.role === "ADMIN" || isAdminPhone(viewer.phone);
 }

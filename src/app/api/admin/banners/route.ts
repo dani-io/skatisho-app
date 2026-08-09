@@ -1,21 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { ADMIN_PHONES } from "@/lib/access";
+import { requireAdmin } from "@/lib/access";
 import { deleteFileQuiet } from "@/lib/s3";
 
-
-async function checkAdmin() {
-  const session = await getSession();
-  if (!session || !ADMIN_PHONES.includes(session.phone)) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-  return null;
-}
-
 export async function GET() {
-  const unauth = await checkAdmin();
-  if (unauth) return unauth;
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const banners = await db.banner.findMany({
     orderBy: { order: "asc" },
@@ -25,8 +15,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const unauth = await checkAdmin();
-  if (unauth) return unauth;
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const { title, link, imageKey, order, isActive } = await req.json();
 
@@ -48,8 +38,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const unauth = await checkAdmin();
-  if (unauth) return unauth;
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const { id, title, link, imageKey, order, isActive } = await req.json();
 
@@ -72,8 +62,8 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const unauth = await checkAdmin();
-  if (unauth) return unauth;
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const { id } = await req.json();
   const banner = await db.banner.findUnique({

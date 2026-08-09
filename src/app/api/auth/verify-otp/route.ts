@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       where: { id: user.id },
       data: { lastLoginAt: new Date(), lastLoginIp: ip },
     });
-    await createSession(user.id, user.phone);
+    await createSession(user.id, user.phone, user.role);
 
     return NextResponse.json({
       success: true,

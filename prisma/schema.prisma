@@ -12,6 +12,10 @@ datasource db {
 model User {
   id            String    @id @default(cuid())
   phone         String    @unique
+  // Nullable: OTP users sign up with a phone only and never get an email.
+  // Populated for admins who sign in via an external identity provider.
+  email         String?   @unique
+  role          Role      @default(USER)
   name          String?
   avatar        String?
   skillLevel    SkillLevel?
@@ -52,6 +56,13 @@ enum SkillLevel {
   BEGINNER
   INTERMEDIATE
   ADVANCED
+}
+
+// Binary for now. Tiers (e.g. SUPPORT, EDITOR) can be added later without a
+// data migration, since every existing row defaults to USER.
+enum Role {
+  USER
+  ADMIN
 }
 
 // ==================== COURSES ====================

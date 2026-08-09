@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { ADMIN_PHONES } from "@/lib/access";
+import { requireAdmin } from "@/lib/access";
 
 
 // GET: public
@@ -15,10 +14,8 @@ export async function GET() {
 
 // POST: admin - create category or item
 export async function POST(req: NextRequest) {
-  const session = await getSession();
-  if (!session || !ADMIN_PHONES.includes(session.phone)) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
   const body = await req.json();
 
   if (body.type === "category") {
@@ -45,10 +42,8 @@ export async function POST(req: NextRequest) {
 
 // PUT: admin - update
 export async function PUT(req: NextRequest) {
-  const session = await getSession();
-  if (!session || !ADMIN_PHONES.includes(session.phone)) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
   const body = await req.json();
 
   if (body.type === "category") {
@@ -67,10 +62,8 @@ export async function PUT(req: NextRequest) {
 
 // DELETE: admin
 export async function DELETE(req: NextRequest) {
-  const session = await getSession();
-  if (!session || !ADMIN_PHONES.includes(session.phone)) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
   const { id, type } = await req.json();
 
   if (type === "category") {

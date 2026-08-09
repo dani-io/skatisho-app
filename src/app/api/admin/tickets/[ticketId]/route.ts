@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { ADMIN_PHONES } from "@/lib/access";
+import { requireAdmin } from "@/lib/access";
 
 
 // GET: ticket detail with messages
@@ -9,10 +8,8 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ ticketId: string }> }
 ) {
-  const session = await getSession();
-  if (!session || !ADMIN_PHONES.includes(session.phone)) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const { ticketId } = await params;
 
@@ -42,10 +39,8 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ ticketId: string }> }
 ) {
-  const session = await getSession();
-  if (!session || !ADMIN_PHONES.includes(session.phone)) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const { ticketId } = await params;
   const { status } = await req.json();
