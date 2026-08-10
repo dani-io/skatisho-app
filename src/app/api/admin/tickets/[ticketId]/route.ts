@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/access";
+import { requirePermission } from "@/lib/access";
 
 
 // GET: ticket detail with messages
@@ -8,7 +8,7 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ ticketId: string }> }
 ) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("tickets");
   if (denied) return denied;
 
   const { ticketId } = await params;
@@ -39,7 +39,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ ticketId: string }> }
 ) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("tickets");
   if (denied) return denied;
 
   const { ticketId } = await params;

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/access";
+import { requirePermission } from "@/lib/access";
 
 
 export async function POST(req: NextRequest) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("users");
   if (denied) return denied;
 
   const { phone, name, planId, duration } = await req.json();

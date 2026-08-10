@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/access";
+import { requirePermission } from "@/lib/access";
 import { deleteFileQuiet } from "@/lib/s3";
 
 export async function GET() {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("banners");
   if (denied) return denied;
 
   const banners = await db.banner.findMany({
@@ -15,7 +15,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("banners");
   if (denied) return denied;
 
   const { title, link, imageKey, order, isActive } = await req.json();
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("banners");
   if (denied) return denied;
 
   const { id, title, link, imageKey, order, isActive } = await req.json();
@@ -62,7 +62,7 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("banners");
   if (denied) return denied;
 
   const { id } = await req.json();

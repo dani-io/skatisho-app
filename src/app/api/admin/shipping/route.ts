@@ -1,15 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/access";
+import { requirePermission } from "@/lib/access";
 
 
+// This GET was never gated (it predates Phase 2). The data is not sensitive —
+// /api/shipping serves the same catalogue to the checkout flow — but an admin
+// route with no check is a trap for the next person who adds a field to it.
 export async function GET() {
+  const denied = await requirePermission("shipping");
+  if (denied) return denied;
+
   const methods = await db.shippingMethod.findMany({ orderBy: { order: "asc" } });
   return NextResponse.json({ methods });
 }
 
 export async function POST(req: NextRequest) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("shipping");
   if (denied) return denied;
   const body = await req.json();
   const method = await db.shippingMethod.create({
@@ -26,7 +32,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("shipping");
   if (denied) return denied;
   const body = await req.json();
   await db.shippingMethod.update({
@@ -43,7 +49,7 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("shipping");
   if (denied) return denied;
   const { id } = await req.json();
   await db.shippingMethod.delete({ where: { id } });

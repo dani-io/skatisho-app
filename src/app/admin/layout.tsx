@@ -30,24 +30,55 @@ import {
 import {
   cn } from "@/lib/utils";
 
+/**
+ * `perm` is the permission key the section's API routes are gated on, so the
+ * sidebar and the server agree on what a section IS. `superAdminOnly` marks the
+ * one section that is not delegable through the permissions array.
+ *
+ * Filtering here is COSMETIC. It stops an admin from being shown doors they
+ * cannot open; it is not what keeps them out. Every route behind these links
+ * runs its own requirePermission/requireSuperAdmin check server-side, which is
+ * what actually holds when someone types the URL directly.
+ */
 const NAV_ITEMS = [
-  { href: "/admin", label: "داشبورد", icon: LayoutDashboard },
-  { href: "/admin/users", label: "کاربران", icon: Users },
-  { href: "/admin/courses", label: "دوره‌ها و ویدئوها", icon: BookOpen },
-  { href: "/admin/coaches", label: "مربیان", icon: UserCog },
-  { href: "/admin/subscriptions", label: "اشتراک‌ها", icon: Crown },
-  { href: "/admin/products", label: "فروشگاه", icon: ShoppingBag },
-  { href: "/admin/tickets", label: "تیکت‌ها", icon: MessageSquare },
-  { href: "/admin/coupons", label: "کدهای تخفیف", icon: Tag },
-  { href: "/admin/banners", label: "بنرها", icon: Image },
-  { href: "/admin/gift-cards", label: "کارت هدیه", icon: Gift },
-  { href: "/admin/faq", label: "سوالات متداول", icon: HelpCircle },
-  { href: "/admin/shipping", label: "روش‌های ارسال", icon: Truck },
-  { href: "/admin/social", label: "شبکه‌های اجتماعی", icon: Globe },
-  { href: "/admin/orders", label: "سفارشات", icon: Package },
-  { href: "/admin/analytics", label: "گزارشات", icon: BarChart3 },
-  { href: "/admin/admins", label: "مدیران", icon: ShieldCheck },
+  { href: "/admin", label: "داشبورد", icon: LayoutDashboard, perm: "dashboard" },
+  { href: "/admin/users", label: "کاربران", icon: Users, perm: "users" },
+  { href: "/admin/courses", label: "دوره‌ها و ویدئوها", icon: BookOpen, perm: "courses" },
+  { href: "/admin/coaches", label: "مربیان", icon: UserCog, perm: "coaches" },
+  { href: "/admin/subscriptions", label: "اشتراک‌ها", icon: Crown, perm: "subscriptions" },
+  { href: "/admin/products", label: "فروشگاه", icon: ShoppingBag, perm: "products" },
+  { href: "/admin/tickets", label: "تیکت‌ها", icon: MessageSquare, perm: "tickets" },
+  { href: "/admin/coupons", label: "کدهای تخفیف", icon: Tag, perm: "coupons" },
+  { href: "/admin/banners", label: "بنرها", icon: Image, perm: "banners" },
+  { href: "/admin/gift-cards", label: "کارت هدیه", icon: Gift, perm: "gift-cards" },
+  { href: "/admin/faq", label: "سوالات متداول", icon: HelpCircle, perm: "faq" },
+  { href: "/admin/shipping", label: "روش‌های ارسال", icon: Truck, perm: "shipping" },
+  { href: "/admin/social", label: "شبکه‌های اجتماعی", icon: Globe, perm: "social" },
+  { href: "/admin/orders", label: "سفارشات", icon: Package, perm: "orders" },
+  { href: "/admin/analytics", label: "گزارشات", icon: BarChart3, perm: "reports" },
+  {
+    href: "/admin/admins",
+    label: "مدیران",
+    icon: ShieldCheck,
+    perm: "admins",
+    superAdminOnly: true,
+  },
 ];
+
+interface AdminAccess {
+  superAdmin: boolean;
+  permissions: string[];
+}
+
+function visibleNavItems(access: AdminAccess | null) {
+  if (!access) return [];
+  // Super-admins (and, this phase, legacy phone admins, whom the API reports as
+  // superAdmin) see everything.
+  if (access.superAdmin) return NAV_ITEMS;
+  return NAV_ITEMS.filter(
+    (item) => !item.superAdminOnly && access.permissions.includes(item.perm)
+  );
+}
 
 export default function AdminLayout({
   children,
@@ -57,6 +88,7 @@ export default function AdminLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [authorized, setAuthorized] = useState(false);
+  const [access, setAccess] = useState<AdminAccess | null>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -68,12 +100,17 @@ export default function AdminLayout({
   useEffect(() => {
     if (isLoginPage) return;
     fetch("/api/admin/check")
-      .then((r) => {
+      .then(async (r) => {
         if (!r.ok) {
           router.push("/");
           return;
         }
+        const d = await r.json().catch(() => null);
         setAuthorized(true);
+        setAccess({
+          superAdmin: !!d?.superAdmin,
+          permissions: Array.isArray(d?.permissions) ? d.permissions : [],
+        });
       })
       .finally(() => setLoading(false));
   }, [router, isLoginPage]);
@@ -94,7 +131,7 @@ export default function AdminLayout({
     <div className="flex h-screen bg-surface-dim" dir="rtl">
       {/* Sidebar - Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-l border-surface-container">
-        <SidebarContent pathname={pathname} />
+        <SidebarContent pathname={pathname} access={access} />
       </aside>
 
       {/* Sidebar - Mobile */}
@@ -111,7 +148,7 @@ export default function AdminLayout({
             >
               <X className="w-5 h-5" />
             </button>
-            <SidebarContent pathname={pathname} />
+            <SidebarContent pathname={pathname} access={access} />
           </aside>
         </div>
       )}
@@ -172,7 +209,14 @@ function LogoutButton() {
   );
 }
 
-function SidebarContent({ pathname }: { pathname: string }) {
+function SidebarContent({
+  pathname,
+  access,
+}: {
+  pathname: string;
+  access: AdminAccess | null;
+}) {
+  const items = visibleNavItems(access);
   return (
     <>
       <div className="p-4 border-b border-surface-container">
@@ -188,7 +232,13 @@ function SidebarContent({ pathname }: { pathname: string }) {
       </div>
 
       <nav className="flex-1 p-3 space-y-1">
-        {NAV_ITEMS.map((item) => {
+        {items.length === 0 && (
+          <p className="px-3 py-2.5 text-xs text-on-surface-muted leading-relaxed">
+            هنوز دسترسی به هیچ بخشی برای شما فعال نشده است. با مدیر ارشد تماس
+            بگیرید.
+          </p>
+        )}
+        {items.map((item) => {
           const isActive =
             item.href === "/admin"
               ? pathname === "/admin"

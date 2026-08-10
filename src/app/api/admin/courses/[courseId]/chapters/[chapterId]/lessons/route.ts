@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/access";
+import { requirePermission } from "@/lib/access";
 import { deleteFileQuiet } from "@/lib/s3";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ courseId: string; chapterId: string }> }
 ) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("courses");
   if (denied) return denied;
 
   const { chapterId } = await params;
@@ -35,7 +35,7 @@ export async function POST(
 }
 
 export async function PUT(req: NextRequest) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("courses");
   if (denied) return denied;
 
   const body = await req.json();
@@ -56,7 +56,7 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("courses");
   if (denied) return denied;
 
   const { searchParams } = new URL(req.url);

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/access";
+import { requirePermission } from "@/lib/access";
 
 
 // GET: list all coupons
 export async function GET() {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("coupons");
   if (denied) return denied;
 
   const coupons = await db.coupon.findMany({
@@ -18,7 +18,7 @@ export async function GET() {
 
 // POST: create coupon
 export async function POST(req: NextRequest) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("coupons");
   if (denied) return denied;
 
   const { code, type, value, minAmount, maxDiscount, usageLimit, expiresAt, description } = await req.json();
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 
 // DELETE: delete coupon
 export async function DELETE(req: NextRequest) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("coupons");
   if (denied) return denied;
 
   const { id } = await req.json();

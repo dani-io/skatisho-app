@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/access";
+import { requirePermission } from "@/lib/access";
 import { deleteFileQuiet } from "@/lib/s3";
 import { toPersianDigits } from "@/lib/utils";
 
@@ -17,7 +17,7 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ coachId: string }> }
 ) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("coaches");
   if (denied) return denied;
 
   const { coachId } = await params;
@@ -78,7 +78,7 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ coachId: string }> }
 ) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("coaches");
   if (denied) return denied;
 
   const { coachId } = await params;

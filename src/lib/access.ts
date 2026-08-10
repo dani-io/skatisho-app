@@ -178,15 +178,25 @@ async function resolveAccess(userId: string) {
 /**
  * Guard for a single admin section, e.g. requirePermission("courses").
  *
- * NOT WIRED TO ANY ROUTE YET — Phase 2 replaces the requireAdmin() calls with
- * this one, section by section. It is exported now so the shape is settled and
- * reviewable before 25 route files start depending on it.
- *
  * Passes when the caller is a super-admin (role, env floor, or legacy phone
  * fallback), or is an ADMIN whose permissions array contains `key`.
  */
 export async function requirePermission(
   key: string
+): Promise<NextResponse | null> {
+  return requireAnyPermission([key]);
+}
+
+/**
+ * Guard for a route legitimately shared by more than one section — holding ANY
+ * of the listed keys is enough.
+ *
+ * Used sparingly and only for READS. A route that WRITES belongs to exactly one
+ * section; widening a write would let an admin change data they were never
+ * granted. See the shared-route notes on each call site.
+ */
+export async function requireAnyPermission(
+  keys: string[]
 ): Promise<NextResponse | null> {
   const session = await getSession();
   if (!session) {
@@ -201,9 +211,96 @@ export async function requirePermission(
 
   if (access.superAdmin || access.legacyPhoneAdmin) return null;
 
-  if (access.role === "ADMIN" && access.permissions.includes(key)) return null;
+  if (
+    access.role === "ADMIN" &&
+    keys.some((key) => access.permissions.includes(key))
+  ) {
+    return null;
+  }
 
   return NextResponse.json({ error: "forbidden" }, { status: 403 });
+}
+
+/**
+ * Guard for the admin-management section. Deliberately NOT a permission key:
+ * granting admin access is the one action that can escalate every other
+ * boundary, so it is reserved for super-admins and cannot be handed out through
+ * the permissions array. An ADMIN holding every key still gets 403 here.
+ *
+ * Legacy ADMIN_PHONES holders still pass, and that is a conscious, temporary
+ * choice: they are today's operators, and in an environment where no row is
+ * SUPER_ADMIN yet and the env floor is unset, excluding them would lock everyone
+ * out of admin management with no way back in through the UI. Phase 4 removes
+ * this together with ADMIN_PHONES.
+ */
+export async function requireSuperAdmin(): Promise<NextResponse | null> {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const access = await resolveAccess(session.userId);
+  if (!access) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
+  if (access.superAdmin || access.legacyPhoneAdmin) return null;
+
+  return NextResponse.json({ error: "forbidden" }, { status: 403 });
+}
+
+/**
+ * Boolean forms of the guards above, for SERVER COMPONENTS — which render, and
+ * so cannot do anything useful with a NextResponse. Same resolution, same DB
+ * read; only the return shape differs.
+ *
+ * These are defence in depth, not the boundary: the boundary is the route
+ * handler. A page that forgets to call these leaks nothing, because its data
+ * still arrives through a gated API.
+ */
+export async function hasPermission(key: string): Promise<boolean> {
+  const session = await getSession();
+  if (!session) return false;
+  const access = await resolveAccess(session.userId);
+  if (!access) return false;
+  if (access.superAdmin || access.legacyPhoneAdmin) return true;
+  return access.role === "ADMIN" && access.permissions.includes(key);
+}
+
+export async function hasSuperAdmin(): Promise<boolean> {
+  const session = await getSession();
+  if (!session) return false;
+  const access = await resolveAccess(session.userId);
+  if (!access) return false;
+  return access.superAdmin || access.legacyPhoneAdmin;
+}
+
+/**
+ * What the panel may render for this caller. Rendering only — every route does
+ * its own server-side check, and this must never be the thing that protects
+ * data. Returns null when the caller is not an admin at all.
+ */
+export async function getAdminAccessSummary(): Promise<{
+  role: SessionRole;
+  superAdmin: boolean;
+  permissions: string[];
+} | null> {
+  const session = await getSession();
+  if (!session) return null;
+
+  const access = await resolveAccess(session.userId);
+  if (!access) return null;
+
+  // A legacy phone admin has no permission rows but full access this phase; the
+  // sidebar treats them like a super-admin so their panel does not go blank.
+  const superAdmin = access.superAdmin || access.legacyPhoneAdmin;
+  if (!superAdmin && access.role !== "ADMIN") return null;
+
+  return {
+    role: access.role,
+    superAdmin,
+    permissions: superAdmin ? [] : access.permissions,
+  };
 }
 
 /**

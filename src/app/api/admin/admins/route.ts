@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { requireAdmin, listLegacyPhoneAdmins } from "@/lib/access";
+import { requireSuperAdmin, listLegacyPhoneAdmins } from "@/lib/access";
 
 /**
  * Manages the admin allowlist — which is simply the set of role=ADMIN users.
  * Adding an email here is what authorizes someone to sign in with Google.
  *
- * Gated by requireAdmin like every other admin route: only an admin may grant
- * or revoke admin.
+ * Gated by requireSuperAdmin, NOT by a permission key. Granting admin access is
+ * the one action that can escalate every other boundary, so it stays with
+ * super-admins and cannot be delegated through the permissions array — an ADMIN
+ * holding every key still gets 403 here.
  */
 
 // Intentionally permissive: Google is the actual authority on whether the
@@ -16,7 +18,7 @@ import { requireAdmin, listLegacyPhoneAdmins } from "@/lib/access";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function GET() {
-  const denied = await requireAdmin();
+  const denied = await requireSuperAdmin();
   if (denied) return denied;
 
   const [admins, legacyPhoneAdmins] = await Promise.all([
@@ -44,7 +46,7 @@ export async function GET() {
  *   - nobody has it -> create a phone-less ADMIN row, ready for Google sign-in
  */
 export async function POST(req: NextRequest) {
-  const denied = await requireAdmin();
+  const denied = await requireSuperAdmin();
   if (denied) return denied;
 
   const body = await req.json().catch(() => null);
@@ -95,10 +97,10 @@ export async function POST(req: NextRequest) {
  * USER so their account, orders and progress survive.
  */
 export async function DELETE(req: NextRequest) {
-  const denied = await requireAdmin();
+  const denied = await requireSuperAdmin();
   if (denied) return denied;
 
-  // Guaranteed non-null: requireAdmin already returned on a missing session.
+  // Guaranteed non-null: requireSuperAdmin already returned on a missing session.
   const session = await getSession();
 
   const body = await req.json().catch(() => null);

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { createNotification } from "@/lib/notifications";
-import { requireAdmin } from "@/lib/access";
+import { requirePermission } from "@/lib/access";
 
 
 const STATUS_LABELS: Record<string, string> = {
@@ -16,7 +16,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ orderId: string }> }
 ) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("orders");
   if (denied) return denied;
 
   const { orderId } = await params;

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/access";
+import { requirePermission } from "@/lib/access";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ courseId: string }> }
 ) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("courses");
   if (denied) return denied;
 
   const { courseId } = await params;
@@ -37,7 +37,7 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ courseId: string }> }
 ) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("courses");
   if (denied) return denied;
 
   const { courseId } = await params;
@@ -65,7 +65,7 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ courseId: string }> }
 ) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("courses");
   if (denied) return denied;
 
   const { courseId } = await params;

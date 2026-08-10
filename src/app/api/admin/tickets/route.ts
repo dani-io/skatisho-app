@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/access";
+import { requirePermission } from "@/lib/access";
 
 
 export async function GET() {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("tickets");
   if (denied) return denied;
 
   const tickets = await db.ticket.findMany({

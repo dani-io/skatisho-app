@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/access";
+import { requirePermission } from "@/lib/access";
 
 
 // GET: public
@@ -14,7 +14,7 @@ export async function GET() {
 
 // POST: admin - create category or item
 export async function POST(req: NextRequest) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("faq");
   if (denied) return denied;
   const body = await req.json();
 
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
 // PUT: admin - update
 export async function PUT(req: NextRequest) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("faq");
   if (denied) return denied;
   const body = await req.json();
 
@@ -62,7 +62,7 @@ export async function PUT(req: NextRequest) {
 
 // DELETE: admin
 export async function DELETE(req: NextRequest) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("faq");
   if (denied) return denied;
   const { id, type } = await req.json();
 

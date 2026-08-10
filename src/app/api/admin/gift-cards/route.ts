@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/access";
+import { requirePermission } from "@/lib/access";
 
 
 function generateCode(): string {
@@ -12,7 +12,7 @@ function generateCode(): string {
 
 // GET: list gift cards
 export async function GET() {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("gift-cards");
   if (denied) return denied;
 
   const cards = await db.giftCard.findMany({
@@ -24,7 +24,7 @@ export async function GET() {
 
 // POST: create gift card(s)
 export async function POST(req: NextRequest) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("gift-cards");
   if (denied) return denied;
 
   const { amount, scope, count, expiresAt } = await req.json();
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
 
 // DELETE
 export async function DELETE(req: NextRequest) {
-  const denied = await requireAdmin();
+  const denied = await requirePermission("gift-cards");
   if (denied) return denied;
 
   const { id } = await req.json();
