@@ -21,6 +21,7 @@ import {
   LogOut,
   Menu,
   X,
+  ArrowRight,
   HelpCircle,
   Truck,
   Globe,
@@ -137,6 +138,40 @@ export default function AdminLayout({
   );
 }
 
+/**
+ * Ends the session and leaves the panel.
+ *
+ * A full document navigation rather than router.push: logging out has to drop
+ * every cached RSC payload the panel accumulated, or the next render can serve
+ * admin data from the router cache to a browser that no longer has a session.
+ */
+function LogoutButton() {
+  const [signingOut, setSigningOut] = useState(false);
+
+  async function handleLogout() {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      // Leave regardless: a failed request must not strand someone inside the
+      // panel with a button that looks broken.
+      window.location.href = "/admin/login";
+    }
+  }
+
+  return (
+    <button
+      onClick={handleLogout}
+      disabled={signingOut}
+      className="flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-error hover:bg-red-50 disabled:opacity-60"
+    >
+      <LogOut className="w-4.5 h-4.5" />
+      {signingOut ? "در حال خروج..." : "خروج"}
+    </button>
+  );
+}
+
 function SidebarContent({ pathname }: { pathname: string }) {
   return (
     <>
@@ -177,14 +212,15 @@ function SidebarContent({ pathname }: { pathname: string }) {
         })}
       </nav>
 
-      <div className="p-3 border-t border-surface-container">
+      <div className="p-3 border-t border-surface-container space-y-1">
         <Link
           href="/"
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-on-surface-muted hover:bg-surface-dim"
         >
-          <LogOut className="w-4.5 h-4.5" />
+          <ArrowRight className="w-4.5 h-4.5" />
           بازگشت به اپ
         </Link>
+        <LogoutButton />
       </div>
     </>
   );
