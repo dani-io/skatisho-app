@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { requireSuperAdmin, listLegacyPhoneAdmins } from "@/lib/access";
+import { normalizePermissions } from "@/lib/permissions";
 
 /**
  * Manages the admin allowlist — which is simply the set of role=ADMIN users.
@@ -21,18 +22,24 @@ export async function GET() {
   const denied = await requireSuperAdmin();
   if (denied) return denied;
 
+  // Everyone with admin-level access, not just role=ADMIN. Filtering on ADMIN
+  // alone made super-admins invisible here — the page that exists to show who
+  // can get in was hiding the most privileged accounts in the system.
   const [admins, legacyPhoneAdmins] = await Promise.all([
     db.user.findMany({
-      where: { role: "ADMIN" },
+      where: { role: { in: ["ADMIN", "SUPER_ADMIN"] } },
       select: {
         id: true,
         name: true,
         email: true,
         phone: true,
+        role: true,
+        permissions: true,
         createdAt: true,
         lastLoginAt: true,
       },
-      orderBy: { createdAt: "asc" },
+      // Super-admins first, then oldest admin first.
+      orderBy: [{ role: "desc" }, { createdAt: "asc" }],
     }),
     listLegacyPhoneAdmins(),
   ]);
@@ -58,13 +65,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "ایمیل نامعتبر است" }, { status: 400 });
   }
 
+  // Optional starting permissions. Omitted means [] — a new admin can sign in
+  // and sees an empty panel until a super-admin grants sections. Least
+  // privilege by default: nobody gets access as a side effect of being added.
+  const permissions =
+    body?.permissions === undefined
+      ? []
+      : normalizePermissions(body.permissions);
+
+  if (permissions === null) {
+    return NextResponse.json(
+      { error: "دسترسی نامعتبر است" },
+      { status: 400 }
+    );
+  }
+
   const existing = await db.user.findUnique({
     where: { email },
     select: { id: true, role: true },
   });
 
   if (existing) {
-    if (existing.role === "ADMIN") {
+    // SUPER_ADMIN included on purpose: without it the update below would
+    // silently DEMOTE a super-admin to ADMIN for the crime of being re-added.
+    if (existing.role === "ADMIN" || existing.role === "SUPER_ADMIN") {
       return NextResponse.json(
         { error: "این ایمیل هم‌اکنون ادمین است" },
         { status: 409 }
@@ -74,16 +98,22 @@ export async function POST(req: NextRequest) {
     // email is @unique, so a create would fail anyway.
     const admin = await db.user.update({
       where: { id: existing.id },
-      data: { role: "ADMIN" },
-      select: { id: true, name: true, email: true, phone: true, createdAt: true },
+      data: { role: "ADMIN", permissions },
+      select: {
+        id: true, name: true, email: true, phone: true,
+        role: true, permissions: true, createdAt: true,
+      },
     });
     return NextResponse.json({ admin, promoted: true }, { status: 200 });
   }
 
   // Google-only admin: no phone, which is why phone is nullable.
   const admin = await db.user.create({
-    data: { email, name, role: "ADMIN" },
-    select: { id: true, name: true, email: true, phone: true, createdAt: true },
+    data: { email, name, role: "ADMIN", permissions },
+    select: {
+      id: true, name: true, email: true, phone: true,
+      role: true, permissions: true, createdAt: true,
+    },
   });
 
   return NextResponse.json({ admin, promoted: false }, { status: 201 });
@@ -122,12 +152,32 @@ export async function DELETE(req: NextRequest) {
     select: { id: true, phone: true, role: true },
   });
 
-  if (!target || target.role !== "ADMIN") {
+  if (!target || (target.role !== "ADMIN" && target.role !== "SUPER_ADMIN")) {
     return NextResponse.json({ error: "ادمین پیدا نشد" }, { status: 404 });
   }
 
-  // Never leave the panel with zero role=ADMIN users.
-  const adminCount = await db.user.count({ where: { role: "ADMIN" } });
+  // Removing the last super-admin would leave nobody able to manage admins at
+  // all, since that section is not delegable through permissions. The env floor
+  // would still let an owner back in, but the UI should not hand anyone that
+  // particular foot-gun.
+  if (target.role === "SUPER_ADMIN") {
+    const superAdminCount = await db.user.count({
+      where: { role: "SUPER_ADMIN" },
+    });
+    if (superAdminCount <= 1) {
+      return NextResponse.json(
+        { error: "آخرین سوپر ادمین را نمی‌توان حذف کرد" },
+        { status: 400 }
+      );
+    }
+  }
+
+  // Never leave the panel with zero admin-level users. Counts both roles —
+  // counting only ADMIN would have called a panel with three super-admins
+  // "empty" and blocked a legitimate removal.
+  const adminCount = await db.user.count({
+    where: { role: { in: ["ADMIN", "SUPER_ADMIN"] } },
+  });
   if (adminCount <= 1) {
     return NextResponse.json(
       { error: "آخرین ادمین را نمی‌توان حذف کرد" },
