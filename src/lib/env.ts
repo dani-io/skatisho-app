@@ -38,6 +38,50 @@ export function getSiteUrl(): string {
   return requireEnv("NEXT_PUBLIC_SITE_URL").replace(/\/+$/, "");
 }
 
+/** Splits a comma-separated env list, trimming blanks. */
+function parseCsv(raw: string | undefined): string[] {
+  return (raw ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+let superAdminEmails: string[] | null = null;
+let superAdminPhones: string[] | null = null;
+
+/**
+ * The super-admin floor: identities that hold SUPER_ADMIN no matter what the
+ * database says. This is the anti-lockout guarantee — it is what lets the owners
+ * back in when a role column is wrong, a row was deleted, or a migration has not
+ * run yet.
+ *
+ * Deliberately NOT requireEnv. An unset floor must degrade to "no env
+ * super-admins" (i.e. today's behaviour, DB roles only); throwing here would
+ * take down every admin route at once, since requireAdmin resolves through this.
+ * Lower-cased to match lib/google, which already normalises the verified address.
+ */
+export function getSuperAdminEmails(): string[] {
+  if (!superAdminEmails) {
+    superAdminEmails = parseCsv(process.env.SUPER_ADMIN_EMAILS).map((email) =>
+      email.toLowerCase()
+    );
+  }
+  return superAdminEmails;
+}
+
+/**
+ * Phone-number half of the floor. Optional, and separate from the legacy
+ * ADMIN_PHONES list (which grants plain ADMIN and goes away in a later phase):
+ * this one exists so an owner who signs in with OTP rather than Google still
+ * lands on SUPER_ADMIN.
+ */
+export function getSuperAdminPhones(): string[] {
+  if (!superAdminPhones) {
+    superAdminPhones = parseCsv(process.env.SUPER_ADMIN_PHONES);
+  }
+  return superAdminPhones;
+}
+
 export interface GoogleOAuthConfig {
   clientId: string;
   clientSecret: string;

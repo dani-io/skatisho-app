@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSession, type SessionPayload } from "@/lib/auth";
+import { getSession, type SessionPayload, type SessionRole } from "@/lib/auth";
+import { getSuperAdminEmails, getSuperAdminPhones } from "@/lib/env";
 
 // Single source of truth for admin identity. Previously this literal was
 // copy-pasted into 13 route files; the mechanism is unchanged, the definition
@@ -11,40 +12,114 @@ export function isAdminPhone(phone: string | null | undefined): boolean {
   return !!phone && ADMIN_PHONES.includes(phone);
 }
 
+// ==================== SUPER-ADMIN FLOOR ====================
+
+/**
+ * The env floor, evaluated against an identity rather than a role column.
+ *
+ * These two predicates are what make super-admin independent of login method:
+ * whether the owner arrives via Google (email) or OTP (phone), the same
+ * identity resolves to the same answer, even if the two paths landed on
+ * different user rows.
+ */
+export function isSuperAdminEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return getSuperAdminEmails().includes(email.trim().toLowerCase());
+}
+
+export function isSuperAdminPhone(phone: string | null | undefined): boolean {
+  if (!phone) return false;
+  return getSuperAdminPhones().includes(phone.trim());
+}
+
+/** Shape shared by a session and a user row for floor purposes. */
+interface FloorIdentity {
+  email?: string | null;
+  phone?: string | null;
+  role?: SessionRole | null;
+}
+
+/**
+ * Is this identity a super-admin? True when EITHER the stored role says so OR
+ * the env floor covers it.
+ *
+ * The floor half is deliberately grant-only: it can let someone in when the
+ * database disagrees, but it never takes access away. That asymmetry is the
+ * whole point — a wrong role column, a deleted row, or an unrun migration must
+ * not be able to lock the owners out of their own panel.
+ */
+export function isSuperAdmin(identity: FloorIdentity | null | undefined): boolean {
+  if (!identity) return false;
+  return (
+    identity.role === "SUPER_ADMIN" ||
+    isSuperAdminEmail(identity.email) ||
+    isSuperAdminPhone(identity.phone)
+  );
+}
+
+/**
+ * Session-level convenience wrapper. Note the caveat on SessionPayload.email:
+ * a token minted before that claim existed carries no email, so this can return
+ * false for a floor member whose session predates the change. That is safe
+ * (they still qualify through their role claim, or through the DB-backed check
+ * in requirePermission) precisely because the floor only ever grants.
+ */
+export function isSuperAdminSession(
+  session: SessionPayload | null | undefined
+): boolean {
+  return isSuperAdmin(session);
+}
+
 /**
  * THE definition of admin-ness. Every gate in the app resolves to this one
  * predicate — do not re-implement it inline in a route.
  *
- * Two ways to qualify, deliberately:
- *   1. role === "ADMIN" — the real, forward-looking check, backed by the DB
+ * Ways to qualify, deliberately:
+ *   1. SUPER_ADMIN — by role claim or by the env floor. Strictly above ADMIN,
+ *      so it must pass every gate a plain ADMIN passes.
+ *   2. role === "ADMIN" — the real, forward-looking check, backed by the DB
  *      column and carried in the token.
- *   2. phone in ADMIN_PHONES — a transitional fallback. Sessions minted before
+ *   3. phone in ADMIN_PHONES — a transitional fallback. Sessions minted before
  *      the role claim existed stay valid for 30 days and carry no role, and no
  *      user row has role=ADMIN until someone sets it. Without this, promoting
  *      the schema would lock every current admin out.
  *
- * Path 2 is temporary. Once admin rows carry role=ADMIN and the old tokens have
- * aged out, delete ADMIN_PHONES and the second clause with it.
+ * Path 3 is temporary. Once admin rows carry role=ADMIN and the old tokens have
+ * aged out, delete ADMIN_PHONES and that clause with it.
  */
 export function isAdminSession(
   session: SessionPayload | null | undefined
 ): boolean {
   if (!session) return false;
-  return session.role === "ADMIN" || isAdminPhone(session.phone);
+  return (
+    isSuperAdminSession(session) ||
+    session.role === "ADMIN" ||
+    isAdminPhone(session.phone)
+  );
 }
 
 /**
  * Users who hold admin access solely through the legacy ADMIN_PHONES fallback —
- * i.e. they are NOT role=ADMIN yet. The allowlist screen lists them read-only so
- * it doesn't misrepresent who can actually get in. Lives here so ADMIN_PHONES
- * stays confined to this module.
+ * i.e. they are NOT role=ADMIN or SUPER_ADMIN. The allowlist screen lists them
+ * read-only so it doesn't misrepresent who can actually get in. Lives here so
+ * ADMIN_PHONES stays confined to this module.
+ *
+ * `notIn` rather than `not`: with SUPER_ADMIN in the enum, `not: "ADMIN"` would
+ * file a super-admin who happens to hold a legacy phone under "legacy", which
+ * reads as a downgrade of the most privileged account in the system. Floor
+ * members are filtered out for the same reason — their access does not come
+ * from the legacy list.
  */
 export async function listLegacyPhoneAdmins() {
   if (ADMIN_PHONES.length === 0) return [];
-  return db.user.findMany({
-    where: { phone: { in: ADMIN_PHONES }, role: { not: "ADMIN" } },
+  const rows = await db.user.findMany({
+    where: {
+      phone: { in: ADMIN_PHONES },
+      role: { notIn: ["ADMIN", "SUPER_ADMIN"] },
+    },
     select: { id: true, name: true, phone: true, email: true },
   });
+  return rows.filter((row) => !isSuperAdmin(row));
 }
 
 /**
@@ -72,6 +147,91 @@ export async function requireAdmin(): Promise<NextResponse | null> {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
   return null;
+}
+
+// ==================== PER-SECTION PERMISSIONS ====================
+
+/**
+ * Resolves what the caller may actually do, from the DATABASE rather than the
+ * token. Permissions are edited far more often than roles, so a 30-day token
+ * snapshot would mean a revoked permission keeps working for up to a month.
+ * One primary-key read on an admin-only path is not a cost worth optimising.
+ *
+ * The floor is applied to the ROW, not the session, which is what makes it
+ * independent of how the caller logged in.
+ */
+async function resolveAccess(userId: string) {
+  const row = await db.user.findUnique({
+    where: { id: userId },
+    select: { role: true, email: true, phone: true, permissions: true },
+  });
+  if (!row) return null;
+  return {
+    ...row,
+    superAdmin: isSuperAdmin(row),
+    // Legacy phone admins predate the permission model entirely; until
+    // ADMIN_PHONES is retired they keep the unrestricted access they have now.
+    legacyPhoneAdmin: isAdminPhone(row.phone),
+  };
+}
+
+/**
+ * Guard for a single admin section, e.g. requirePermission("courses").
+ *
+ * NOT WIRED TO ANY ROUTE YET — Phase 2 replaces the requireAdmin() calls with
+ * this one, section by section. It is exported now so the shape is settled and
+ * reviewable before 25 route files start depending on it.
+ *
+ * Passes when the caller is a super-admin (role, env floor, or legacy phone
+ * fallback), or is an ADMIN whose permissions array contains `key`.
+ */
+export async function requirePermission(
+  key: string
+): Promise<NextResponse | null> {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const access = await resolveAccess(session.userId);
+  if (!access) {
+    // Session references a row that no longer exists.
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
+  if (access.superAdmin || access.legacyPhoneAdmin) return null;
+
+  if (access.role === "ADMIN" && access.permissions.includes(key)) return null;
+
+  return NextResponse.json({ error: "forbidden" }, { status: 403 });
+}
+
+/**
+ * Login-time reconciliation: when the identity signing in is covered by the env
+ * floor, make the database say so too, and return the role the session should
+ * carry.
+ *
+ * Both login paths call this. Over time it converges the "Reza has two rows"
+ * problem — whichever row he authenticates through gets promoted — while the
+ * floor keeps guaranteeing access in the meantime. It only ever promotes; it
+ * never demotes, so removing someone from the floor is a deliberate DB edit
+ * rather than a silent side effect of somebody else logging in.
+ */
+export async function applySuperAdminFloor(user: {
+  id: string;
+  email: string | null;
+  phone: string | null;
+  role: SessionRole;
+}): Promise<SessionRole> {
+  if (!isSuperAdmin(user)) return user.role;
+
+  if (user.role !== "SUPER_ADMIN") {
+    await db.user.update({
+      where: { id: user.id },
+      data: { role: "SUPER_ADMIN" },
+    });
+  }
+  return "SUPER_ADMIN";
 }
 
 async function hasActiveSubscription(userId: string): Promise<boolean> {
@@ -152,10 +312,16 @@ export async function canAccessAvatar(
 
   const viewer = await db.user.findUnique({
     where: { id: userId },
-    select: { phone: true, role: true },
+    select: { phone: true, role: true, email: true },
   });
   if (!viewer) return false;
-  // Same two-path rule as isAdminSession, resolved from the row rather than the
-  // token because this is called with a bare userId.
-  return viewer.role === "ADMIN" || isAdminPhone(viewer.phone);
+  // Same rule as isAdminSession, resolved from the row rather than the token
+  // because this is called with a bare userId. `email` is selected so the
+  // super-admin floor applies here too — without it, an owner whose row still
+  // says USER would be denied a moderation view every plain ADMIN can see.
+  return (
+    isSuperAdmin(viewer) ||
+    viewer.role === "ADMIN" ||
+    isAdminPhone(viewer.phone)
+  );
 }

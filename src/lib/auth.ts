@@ -11,7 +11,7 @@ const COOKIE_NAME = "skatisho-session";
  * Mirrors the Prisma `Role` enum, declared structurally so this module (and the
  * proxy, which must stay Prisma-free) never pulls in the client at runtime.
  */
-export type SessionRole = "USER" | "ADMIN";
+export type SessionRole = "USER" | "ADMIN" | "SUPER_ADMIN";
 
 export interface SessionPayload {
   userId: string;
@@ -26,15 +26,24 @@ export interface SessionPayload {
    * role as USER — never as an error and never as ADMIN.
    */
   role?: SessionRole;
+  /**
+   * Also optional, and for the same reason: tokens minted before this claim
+   * existed carry no `email`. It is here so the super-admin env floor can be
+   * evaluated without a database round trip on cheap paths. It may only ever
+   * GRANT access — never deny it — because a missing claim is indistinguishable
+   * from "this user has no email".
+   */
+  email?: string | null;
 }
 
 // ==================== JWT SESSION ====================
 export async function createSession(
   userId: string,
   phone: string | null,
-  role: SessionRole = "USER"
+  role: SessionRole = "USER",
+  email: string | null = null
 ) {
-  const token = await new SignJWT({ userId, phone, role })
+  const token = await new SignJWT({ userId, phone, role, email })
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime("30d")
     .sign(getJwtSecret());

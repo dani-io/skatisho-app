@@ -19,6 +19,11 @@ model User {
   // Populated for admins who sign in via an external identity provider.
   email         String?   @unique
   role          Role      @default(USER)
+  // Section keys a regular ADMIN may access, e.g. ["courses", "coaches"].
+  // Meaningless for USER (never consulted) and for SUPER_ADMIN (full access by
+  // definition). Read from the DB per request, never from the session token, so
+  // revoking a permission takes effect immediately instead of at next login.
+  permissions   String[]  @default([])
   name          String?
   avatar        String?
   skillLevel    SkillLevel?
@@ -61,11 +66,13 @@ enum SkillLevel {
   ADVANCED
 }
 
-// Binary for now. Tiers (e.g. SUPPORT, EDITOR) can be added later without a
-// data migration, since every existing row defaults to USER.
+// SUPER_ADMIN is strictly above ADMIN: it ignores `permissions` and may manage
+// the admin list. Membership is additionally guaranteed by the SUPER_ADMIN_EMAILS
+// env floor (see lib/access), so this column can never lock the owners out.
 enum Role {
   USER
   ADMIN
+  SUPER_ADMIN
 }
 
 // ==================== COURSES ====================

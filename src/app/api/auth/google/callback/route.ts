@@ -3,6 +3,7 @@ import { timingSafeEqual } from "crypto";
 import { db } from "@/lib/db";
 import { createSession } from "@/lib/auth";
 import { getGoogleOAuthConfig, getSiteUrl } from "@/lib/env";
+import { applySuperAdminFloor, isSuperAdminEmail } from "@/lib/access";
 import { OAUTH_STATE_COOKIE, resolveGoogleIdentity } from "@/lib/google";
 
 /**
@@ -65,24 +66,51 @@ export async function GET(req: NextRequest) {
     return failure("google_failed");
   }
 
-  // THE allowlist: a role=ADMIN user carrying this email. There is no separate
-  // allowlist table, and no auto-provisioning — an unknown Google account is
-  // simply not an admin here.
-  const admin = await db.user.findFirst({
-    where: { email: identity.email, role: "ADMIN" },
-    select: { id: true, phone: true },
+  // THE allowlist: a user row carrying this email whose role is ADMIN or
+  // SUPER_ADMIN, OR an address covered by the env super-admin floor. There is
+  // no separate allowlist table.
+  //
+  // SUPER_ADMIN had to be added here explicitly: the previous query filtered on
+  // role === "ADMIN", so promoting an owner to SUPER_ADMIN would have locked
+  // that owner out of the only login method they use.
+  const inFloor = isSuperAdminEmail(identity.email);
+
+  const existing = await db.user.findUnique({
+    where: { email: identity.email },
+    select: { id: true, phone: true, email: true, role: true },
   });
 
-  if (!admin) {
+  if (!existing && !inFloor) {
     // Deliberately does NOT create a user. Regular accounts are born from the
     // OTP flow only; this endpoint is admin sign-in, not registration.
     console.warn("[google-oauth] rejected non-allowlisted Google sign-in");
     return failure("not_admin");
   }
 
+  if (existing && !inFloor && existing.role !== "ADMIN" && existing.role !== "SUPER_ADMIN") {
+    // The address belongs to a regular account. Having a row is not authority.
+    console.warn("[google-oauth] rejected non-admin Google sign-in");
+    return failure("not_admin");
+  }
+
+  // A floor member with no row yet still gets in — that is the point of the
+  // floor. This is the one auto-provisioning case, and it is bounded by an env
+  // list only a deployer can change, so an unknown Google account still
+  // creates nothing.
+  const admin =
+    existing ??
+    (await db.user.create({
+      data: { email: identity.email, name: identity.name, role: "SUPER_ADMIN" },
+      select: { id: true, phone: true, email: true, role: true },
+    }));
+
+  // Reconciles the DB with the floor and tells us what the token should say.
+  const role = await applySuperAdminFloor(admin);
+
   // Same jose session everything else already understands. phone may be null
-  // for a Google-only admin; the role claim is what grants access.
-  await createSession(admin.id, admin.phone, "ADMIN");
+  // for a Google-only admin; the role claim is what grants access. The email
+  // claim lets the floor be evaluated without a DB read on cheap paths.
+  await createSession(admin.id, admin.phone, role, admin.email);
 
   await db.user.update({
     where: { id: admin.id },

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSession } from "@/lib/auth";
+import { applySuperAdminFloor } from "@/lib/access";
 import { getSmsProvider } from "@/lib/sms";
 import { db } from "@/lib/db";
 
@@ -41,7 +42,10 @@ export async function POST(req: NextRequest) {
       where: { id: user.id },
       data: { lastLoginAt: new Date(), lastLoginIp: ip },
     });
-    await createSession(user.id, user.phone, user.role);
+    // An owner covered by the env floor is promoted here too, so it does not
+    // matter which login method they happen to use.
+    const role = await applySuperAdminFloor(user);
+    await createSession(user.id, user.phone, role, user.email);
 
     return NextResponse.json({
       success: true,
