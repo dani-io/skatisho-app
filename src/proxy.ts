@@ -15,12 +15,31 @@ const PUBLIC_PATHS = ["/login", "/verify", "/api/auth", "/admin/login"];
  * calls with JSON — it is NOT an authorization layer. Route handlers do their
  * own session and access checks and are authoritative; note that the static
  * bypass below lets any non-API path containing a dot through untouched.
+ *
+ * Browsers are sent to the login screen that matches where they were going: an
+ * admin URL leads to the Google admin sign-in, everything else to the OTP page.
+ * Sending an admin to /login would offer them the one method that cannot get
+ * them where they asked to go.
+ *
+ * This cannot loop. "/admin/login" is in PUBLIC_PATHS, which is checked before
+ * the session test below, so the admin login screen returns early and never
+ * reaches this function — the redirect target is therefore never itself gated.
+ *
+ * API callers are unaffected: the isApi branch returns first, and "/api/admin/*"
+ * is not prefixed by "/admin" in any case. API auth stays 401/403 JSON from the
+ * route handlers.
  */
 function deny(req: NextRequest, isApi: boolean) {
   if (isApi) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  return NextResponse.redirect(new URL("/login", req.url));
+  const { pathname } = req.nextUrl;
+  // Exact "/admin" plus the "/admin/" subtree — deliberately not a bare
+  // startsWith("/admin"), which would also swallow a sibling like
+  // "/administrators".
+  const isAdminPage = pathname === "/admin" || pathname.startsWith("/admin/");
+  const target = isAdminPage ? "/admin/login" : "/login";
+  return NextResponse.redirect(new URL(target, req.url));
 }
 
 export async function proxy(req: NextRequest) {
