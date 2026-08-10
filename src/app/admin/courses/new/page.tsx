@@ -11,38 +11,52 @@ interface Coach { id: string; name: string; }
 export default function AdminNewCoursePage() {
   const router = useRouter();
   const [coaches, setCoaches] = useState<Coach[]>([]);
+  const [coachesLoading, setCoachesLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     title: "", description: "", category: "GENERAL",
     level: "BEGINNER", coachId: "", isPublished: false,
   });
 
+  // The coach list comes straight from the coaches endpoint. It used to be
+  // scraped off /api/admin/courses/course-general — a seed id that no longer
+  // exists, so that request 404'd and the dropdown silently stayed empty.
   useEffect(() => {
-    fetch("/api/admin/courses")
-      .then((r) => r.json())
-      .then(() => {
-        // Get coaches from a course detail endpoint workaround
-        fetch("/api/admin/courses/course-general")
-          .then((r) => r.json())
-          .then((d) => {
-            if (d.coaches) {
-              setCoaches(d.coaches);
-              if (d.coaches[0]) setForm((f) => ({ ...f, coachId: d.coaches[0].id }));
-            }
-          });
-      });
+    fetch("/api/coaches")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d: { coaches?: Coach[] }) => {
+        const list = d.coaches ?? [];
+        setCoaches(list);
+        if (list[0]) setForm((f) => ({ ...f, coachId: list[0].id }));
+      })
+      .catch(() => setError("دریافت فهرست مربی‌ها ناموفق بود."))
+      .finally(() => setCoachesLoading(false));
   }, []);
 
+  const canSubmit = !!form.title.trim() && !!form.coachId && !saving;
+
   async function handleSubmit() {
-    if (!form.title.trim() || !form.coachId) return;
+    if (!canSubmit) return;
     setSaving(true);
-    const res = await fetch("/api/admin/courses", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    const { course } = await res.json();
-    router.push(`/admin/courses/${course.id}`);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/courses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.course) {
+        setError(data?.error ?? "ایجاد دوره ناموفق بود.");
+        setSaving(false);
+        return;
+      }
+      router.push(`/admin/courses/${data.course.id}`);
+    } catch {
+      setError("ایجاد دوره ناموفق بود.");
+      setSaving(false);
+    }
   }
 
   return (
@@ -87,12 +101,26 @@ export default function AdminNewCoursePage() {
         </div>
         <div>
           <label className="block text-xs font-medium mb-1">مربی</label>
-          <select className="w-full h-10 px-3 text-sm border border-surface-container rounded-[var(--radius-input)]"
-            value={form.coachId} onChange={(e) => setForm({ ...form, coachId: e.target.value })}>
+          <select className="w-full h-10 px-3 text-sm border border-surface-container rounded-[var(--radius-input)] disabled:opacity-60"
+            value={form.coachId} disabled={coachesLoading || coaches.length === 0}
+            onChange={(e) => setForm({ ...form, coachId: e.target.value })}>
+            <option value="">
+              {coachesLoading ? "در حال بارگذاری..." : "انتخاب مربی"}
+            </option>
             {coaches.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
+          {/* Never leave the admin staring at a blank select with no explanation. */}
+          {!coachesLoading && coaches.length === 0 && (
+            <p className="mt-1 text-xs text-red-600">
+              هیچ مربی‌ای ثبت نشده است. برای ایجاد دوره ابتدا باید یک مربی اضافه شود.
+            </p>
+          )}
+          {!coachesLoading && coaches.length > 0 && !form.coachId && (
+            <p className="mt-1 text-xs text-red-600">انتخاب مربی الزامی است.</p>
+          )}
         </div>
-        <Button size="full" onClick={handleSubmit} disabled={saving || !form.title.trim()}>
+        {error && <p className="text-xs text-red-600">{error}</p>}
+        <Button size="full" onClick={handleSubmit} disabled={!canSubmit}>
           <Save className="w-4 h-4 ml-2" />
           {saving ? "در حال ایجاد..." : "ایجاد دوره"}
         </Button>
