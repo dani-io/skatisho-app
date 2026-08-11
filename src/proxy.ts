@@ -8,7 +8,21 @@ import { getJwtSecret } from "@/lib/env";
  * "/admin" is not prefixed by "/admin/login". The admin panel itself stays
  * gated. "/api/auth" already covers the Google routes.
  */
-const PUBLIC_PATHS = ["/login", "/verify", "/api/auth", "/admin/login"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/verify",
+  "/api/auth",
+  "/admin/login",
+  // Public images (coach photos, course covers, products, banners) streamed out
+  // of the public bucket by app/media/[...key]. The landing page renders these
+  // for logged-out visitors, so the gate must not touch them.
+  //
+  // The trailing slash is deliberate, unlike its siblings above: these entries
+  // are prefix matches, and a bare "/media" would also open a future sibling
+  // like "/media-library". Every real request here has at least one path
+  // segment after /media, because the route is a catch-all.
+  "/media/",
+];
 
 /**
  * Coarse gate only. It redirects browsers to the login page and answers API

@@ -2,15 +2,11 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  images: {
-    // Only the public CDN. Private media never has a remote URL to optimise.
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "cdn.skatisho.com",
-      },
-    ],
-  },
+  // No `images.remotePatterns`: every image is same-origin now, served by
+  // app/media/[...key]. The entry that used to be here allowed
+  // https://cdn.skatisho.com, a host that never had a DNS record — it permitted
+  // an origin nothing could load. Same-origin URLs need no allowlist, and
+  // nothing in the app uses next/image today in any case.
   experimental: {
     serverActions: {
       bodySizeLimit: "500mb",

@@ -43,7 +43,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # --- Build-time public vars (inlined into the client bundle) ---------------
-# Pass with: docker build --build-arg NEXT_PUBLIC_CDN_URL=https://cdn.skatisho.com ...
+# Pass with: docker build --build-arg NEXT_PUBLIC_CDN_URL=/media ...
+# These are INLINED into the bundle here; setting them in the running
+# container's environment has no effect. Changing one requires a rebuild.
 ARG NEXT_PUBLIC_CDN_URL
 ARG NEXT_PUBLIC_SITE_URL
 ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY

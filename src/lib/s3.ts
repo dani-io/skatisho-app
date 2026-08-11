@@ -80,6 +80,8 @@ export interface ObjectStream {
   contentRange?: string;
   /** True when the response is a partial (206) body. */
   partial: boolean;
+  /** Storage's entity tag, for callers that want to support revalidation. */
+  etag?: string;
 }
 
 export class RangeNotSatisfiableError extends Error {
@@ -115,6 +117,7 @@ export async function getObjectStream(
       contentLength: res.ContentLength ?? 0,
       contentRange: res.ContentRange,
       partial: !!res.ContentRange,
+      etag: res.ETag,
     };
   } catch (err: unknown) {
     const name = (err as { name?: string })?.name;
