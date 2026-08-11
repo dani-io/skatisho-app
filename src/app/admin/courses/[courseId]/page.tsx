@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowRight, Plus, Trash2, ChevronDown, GripVertical,
-  Play, Lock, Save, Video,
+  Play, Lock, Save, Video, Pencil,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { FileUpload } from "@/components/ui/file-upload";
 interface Lesson {
   id: string;
   title: string;
+  description: string | null;
   videoUrl: string;
   duration: number;
   isFree: boolean;
@@ -58,7 +59,14 @@ export default function AdminCourseDetailPage() {
   // New chapter/lesson forms
   const [newChapterTitle, setNewChapterTitle] = useState("");
   const [addingLesson, setAddingLesson] = useState<string | null>(null);
-  const [newLesson, setNewLesson] = useState({ title: "", videoUrl: "", duration: 0, isFree: false, thumbnail: "" });
+  const [newLesson, setNewLesson] = useState({ title: "", description: "", videoUrl: "", duration: 0, isFree: false, thumbnail: "" });
+
+  // Edit mirrors the add form, but text-only: video and thumbnail are not
+  // replaceable here, so they are neither shown nor sent.
+  const [editingLesson, setEditingLesson] = useState<string | null>(null);
+  const [editLesson, setEditLesson] = useState({ title: "", description: "", duration: 0, isFree: false });
+  const [editError, setEditError] = useState("");
+  const [savingLesson, setSavingLesson] = useState(false);
 
   useEffect(() => {
     fetch(`/api/admin/courses/${courseId}`)
@@ -124,8 +132,52 @@ export default function AdminCourseDetailPage() {
         ),
       };
     });
-    setNewLesson({ title: "", videoUrl: "", duration: 0, isFree: false, thumbnail: "" });
+    setNewLesson({ title: "", description: "", videoUrl: "", duration: 0, isFree: false, thumbnail: "" });
     setAddingLesson(null);
+  }
+
+  function startEditLesson(lesson: Lesson) {
+    setEditingLesson(lesson.id);
+    setEditError("");
+    setEditLesson({
+      title: lesson.title,
+      description: lesson.description || "",
+      duration: lesson.duration,
+      isFree: lesson.isFree,
+    });
+  }
+
+  async function saveLesson(chapterId: string, lessonId: string) {
+    if (!editLesson.title.trim()) return;
+    setSavingLesson(true);
+    setEditError("");
+
+    const res = await fetch(`/api/admin/courses/${courseId}/chapters/${chapterId}/lessons`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: lessonId, ...editLesson }),
+    });
+    setSavingLesson(false);
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setEditError(data.error || "خطا در ذخیره درس");
+      return;
+    }
+
+    const { lesson } = await res.json();
+    setCourse((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        chapters: prev.chapters.map((ch) =>
+          ch.id === chapterId
+            ? { ...ch, lessons: ch.lessons.map((l) => (l.id === lessonId ? lesson : l)) }
+            : ch
+        ),
+      };
+    });
+    setEditingLesson(null);
   }
 
   async function deleteLesson(chapterId: string, lessonId: string) {
@@ -293,19 +345,65 @@ export default function AdminCourseDetailPage() {
               {/* Lessons */}
               {openChapters.has(chapter.id) && (
                 <div>
-                  {chapter.lessons.map((lesson) => (
-                    <div key={lesson.id} className="flex items-center gap-3 px-4 py-2.5 border-t border-surface-container text-sm">
-                      <Video className="w-4 h-4 text-on-surface-muted shrink-0" />
-                      <span className="flex-1">{lesson.title}</span>
-                      <span className="text-xs text-on-surface-muted">{formatDuration(lesson.duration)}</span>
-                      {lesson.isFree && (
-                        <span className="text-[10px] bg-green-100 text-green-600 px-1.5 py-0.5 rounded">رایگان</span>
-                      )}
-                      <button onClick={() => deleteLesson(chapter.id, lesson.id)} className="p-1 hover:bg-red-50 rounded">
-                        <Trash2 className="w-3 h-3 text-red-400" />
-                      </button>
-                    </div>
-                  ))}
+                  {chapter.lessons.map((lesson) =>
+                    editingLesson === lesson.id ? (
+                      <div key={lesson.id} className="p-3 border-t border-surface-container bg-surface-dim/50 space-y-2">
+                        <input
+                          placeholder="عنوان درس"
+                          className="w-full h-9 px-3 text-sm border border-surface-container rounded-lg focus:border-primary focus:outline-none"
+                          value={editLesson.title}
+                          onChange={(e) => setEditLesson({ ...editLesson, title: e.target.value })}
+                        />
+                        <textarea
+                          placeholder="توضیحات درس"
+                          className="w-full h-20 px-3 py-2 text-sm border border-surface-container rounded-lg focus:border-primary focus:outline-none resize-none"
+                          value={editLesson.description}
+                          onChange={(e) => setEditLesson({ ...editLesson, description: e.target.value })}
+                        />
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            placeholder="مدت (ثانیه)"
+                            className="w-28 h-9 px-3 text-sm border border-surface-container rounded-lg focus:border-primary focus:outline-none"
+                            value={editLesson.duration || ""}
+                            onChange={(e) => setEditLesson({ ...editLesson, duration: parseInt(e.target.value) || 0 })}
+                          />
+                          <label className="flex items-center gap-1 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={editLesson.isFree}
+                              onChange={(e) => setEditLesson({ ...editLesson, isFree: e.target.checked })}
+                              className="accent-primary"
+                            />
+                            رایگان
+                          </label>
+                        </div>
+                        {/* Video and thumbnail are intentionally absent — this form never sends them. */}
+                        {editError && <p className="text-xs text-error">{editError}</p>}
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => saveLesson(chapter.id, lesson.id)} disabled={savingLesson || !editLesson.title.trim()}>
+                            {savingLesson ? "در حال ذخیره..." : "ذخیره"}
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditingLesson(null)}>انصراف</Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div key={lesson.id} className="flex items-center gap-3 px-4 py-2.5 border-t border-surface-container text-sm">
+                        <Video className="w-4 h-4 text-on-surface-muted shrink-0" />
+                        <span className="flex-1">{lesson.title}</span>
+                        <span className="text-xs text-on-surface-muted">{formatDuration(lesson.duration)}</span>
+                        {lesson.isFree && (
+                          <span className="text-[10px] bg-green-100 text-green-600 px-1.5 py-0.5 rounded">رایگان</span>
+                        )}
+                        <button onClick={() => startEditLesson(lesson)} className="p-1 hover:bg-primary/5 rounded">
+                          <Pencil className="w-3 h-3 text-on-surface-muted" />
+                        </button>
+                        <button onClick={() => deleteLesson(chapter.id, lesson.id)} className="p-1 hover:bg-red-50 rounded">
+                          <Trash2 className="w-3 h-3 text-red-400" />
+                        </button>
+                      </div>
+                    )
+                  )}
 
                   {/* Add Lesson Form */}
                   {addingLesson === chapter.id ? (
@@ -315,6 +413,12 @@ export default function AdminCourseDetailPage() {
                         className="w-full h-9 px-3 text-sm border border-surface-container rounded-lg focus:border-primary focus:outline-none"
                         value={newLesson.title}
                         onChange={(e) => setNewLesson({ ...newLesson, title: e.target.value })}
+                      />
+                      <textarea
+                        placeholder="توضیحات درس"
+                        className="w-full h-20 px-3 py-2 text-sm border border-surface-container rounded-lg focus:border-primary focus:outline-none resize-none"
+                        value={newLesson.description}
+                        onChange={(e) => setNewLesson({ ...newLesson, description: e.target.value })}
                       />
                       <FileUpload
                         label=""
