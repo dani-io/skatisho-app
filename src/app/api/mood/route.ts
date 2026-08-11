@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getLiveSession } from "@/lib/presence";
 import { db } from "@/lib/db";
 
 // GET: today's mood
 export async function GET() {
-  const session = await getSession();
+  const session = await getLiveSession();
   if (!session) return NextResponse.json({ mood: null });
 
   const today = new Date();
@@ -20,7 +20,7 @@ export async function GET() {
 
 // POST: set mood
 export async function POST(req: NextRequest) {
-  const session = await getSession();
+  const session = await getLiveSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const { mood } = await req.json();

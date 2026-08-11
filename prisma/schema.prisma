@@ -53,10 +53,18 @@ model User {
   walletBalance Int       @default(0)
   lastLoginAt   DateTime?
   lastLoginIp   String?
+  // Last authenticated REQUEST, not last login — written by touchLastSeen in
+  // lib/presence at most once per throttle window per user. Deliberately a
+  // separate column from lastLoginAt: one answers "when did they sign in", this
+  // one answers "are they here right now", and the admin list needs both.
+  lastSeenAt    DateTime?
   cart          Json?
   referralCode  String    @unique @default(cuid())
   referredBy    String?
 
+  // The admin user list sorts and filters on presence; without this the online
+  // filter is a sequential scan of every user row.
+  @@index([lastSeenAt])
   @@map("users")
 }
 

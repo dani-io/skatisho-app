@@ -1,7 +1,7 @@
 import { Readable } from "node:stream";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSession } from "@/lib/auth";
+import { getLiveSession } from "@/lib/presence";
 import { canAccessLesson } from "@/lib/access";
 import { getObjectStream, RangeNotSatisfiableError } from "@/lib/s3";
 
@@ -20,7 +20,7 @@ export async function GET(
   { params }: { params: Promise<{ courseId: string; lessonId: string }> }
 ) {
   const { courseId, lessonId } = await params;
-  const session = await getSession();
+  const session = await getLiveSession();
 
   const lesson = await db.lesson.findUnique({
     where: { id: lessonId },

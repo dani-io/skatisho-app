@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession, type SessionPayload, type SessionRole } from "@/lib/auth";
 import { getSuperAdminEmails, getSuperAdminPhones } from "@/lib/env";
+import { touchLastSeen } from "@/lib/presence";
 
 // Single source of truth for admin identity. Previously this literal was
 // copy-pasted into 13 route files; the mechanism is unchanged, the definition
@@ -166,6 +167,18 @@ async function resolveAccess(userId: string) {
     select: { role: true, email: true, phone: true, permissions: true },
   });
   if (!row) return null;
+
+  // Presence for the admin panel. Every admin gate resolves through here, so
+  // this single call is what stops an admin who lives in /admin from reading as
+  // offline in their own user list. Same throttled helper the user-facing routes
+  // use — one write per ~2 minutes per person, deferred to after(), no
+  // updatedAt bump — deliberately reused rather than reimplemented.
+  //
+  // It fires before the permission verdict, so a caller who is about to get a
+  // 403 is still recorded as active. That is correct: lastSeenAt means "made an
+  // authenticated request", not "was allowed in".
+  touchLastSeen(userId);
+
   return {
     ...row,
     superAdmin: isSuperAdmin(row),

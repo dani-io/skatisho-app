@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSession } from "@/lib/auth";
+import { getLiveSession } from "@/lib/presence";
 import { getCourseAccessDetail } from "@/lib/access";
 import { cdnUrl } from "@/lib/storage";
 
@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ courseId: string }> }
 ) {
   const { courseId } = await params;
-  const session = await getSession();
+  const session = await getLiveSession();
 
   const course = await db.course.findUnique({
     where: { id: courseId },

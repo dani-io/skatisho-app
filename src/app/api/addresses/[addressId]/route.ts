@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getLiveSession } from "@/lib/presence";
 import { db } from "@/lib/db";
 
 // DELETE
@@ -7,7 +7,7 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ addressId: string }> }
 ) {
-  const session = await getSession();
+  const session = await getLiveSession();
   if (!session) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
@@ -26,7 +26,7 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ addressId: string }> }
 ) {
-  const session = await getSession();
+  const session = await getLiveSession();
   if (!session) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }

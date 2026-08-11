@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getLiveSession } from "@/lib/presence";
 import { db } from "@/lib/db";
 
 // GET: load cart
 export async function GET() {
-  const session = await getSession();
+  const session = await getLiveSession();
   if (!session) return NextResponse.json({ cart: null });
 
   const user = await db.user.findUnique({
@@ -17,7 +17,7 @@ export async function GET() {
 
 // POST: save cart
 export async function POST(req: NextRequest) {
-  const session = await getSession();
+  const session = await getLiveSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const { items } = await req.json();

@@ -1,6 +1,6 @@
 import { Readable, Transform } from "node:stream";
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getLiveSession } from "@/lib/presence";
 import { db } from "@/lib/db";
 import { uploadStream, deleteFileQuiet } from "@/lib/s3";
 import { userAvatarUrl } from "@/lib/storage";
@@ -43,7 +43,7 @@ function byteLimiter(limit: number) {
  * Raw body, streamed to storage — same contract as /api/upload.
  */
 export async function POST(req: NextRequest) {
-  const session = await getSession();
+  const session = await getLiveSession();
   if (!session) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }

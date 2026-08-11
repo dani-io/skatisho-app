@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSession } from "@/lib/auth";
+import { getLiveSession } from "@/lib/presence";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ courseId: string; lessonId: string }> }
 ) {
   const { lessonId } = await params;
-  const session = await getSession();
+  const session = await getLiveSession();
 
   if (!session) {
     return NextResponse.json({ error: "لطفاً وارد شوید" }, { status: 401 });

@@ -1,7 +1,7 @@
 import { Readable } from "node:stream";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSession } from "@/lib/auth";
+import { getLiveSession } from "@/lib/presence";
 import { canAccessAvatar } from "@/lib/access";
 import { getObjectStream, RangeNotSatisfiableError } from "@/lib/s3";
 
@@ -16,7 +16,7 @@ export async function GET(
   { params }: { params: Promise<{ userId: string }> }
 ) {
   const { userId } = await params;
-  const session = await getSession();
+  const session = await getLiveSession();
 
   if (!session) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });

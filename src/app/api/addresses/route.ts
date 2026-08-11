@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getLiveSession } from "@/lib/presence";
 import { db } from "@/lib/db";
 
 // GET: list addresses
 export async function GET() {
-  const session = await getSession();
+  const session = await getLiveSession();
   if (!session) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
@@ -19,7 +19,7 @@ export async function GET() {
 
 // POST: create address
 export async function POST(req: NextRequest) {
-  const session = await getSession();
+  const session = await getLiveSession();
   if (!session) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }

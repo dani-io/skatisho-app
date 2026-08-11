@@ -14,6 +14,7 @@ export async function GET() {
       phone: true,
       skillLevel: true,
       createdAt: true,
+      lastSeenAt: true,
       subscription: {
         select: {
           isActive: true,
@@ -23,5 +24,10 @@ export async function GET() {
     },
   });
 
-  return NextResponse.json({ users });
+  // The presence dot is a comparison between lastSeenAt and "now", and the
+  // client's clock is not a reliable source for the second half of it — a phone
+  // with a drifting clock would show every user online, or nobody. Serving our
+  // own clock alongside the rows keeps both sides of the comparison on server
+  // time.
+  return NextResponse.json({ users, now: new Date() });
 }
