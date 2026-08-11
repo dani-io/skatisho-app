@@ -10,8 +10,20 @@ export async function POST(
   const denied = await requirePermission("courses");
   if (denied) return denied;
 
-  const { chapterId } = await params;
+  const { courseId, chapterId } = await params;
   const body = await req.json();
+
+  // Same ownership rule the PUT enforces: the chapter in the path must actually
+  // belong to the course in the path, or the lesson would be created under a
+  // chapter this URL does not own.
+  const chapter = await db.chapter.findFirst({
+    where: { id: chapterId, courseId },
+    select: { id: true },
+  });
+
+  if (!chapter) {
+    return NextResponse.json({ error: "فصل یافت نشد" }, { status: 404 });
+  }
 
   const maxOrder = await db.lesson.aggregate({
     where: { chapterId },
@@ -112,24 +124,37 @@ export async function PUT(
   return NextResponse.json({ lesson });
 }
 
-export async function DELETE(req: NextRequest) {
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ courseId: string; chapterId: string }> }
+) {
   const denied = await requirePermission("courses");
   if (denied) return denied;
 
+  const { courseId, chapterId } = await params;
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
-  const lesson = await db.lesson.findUnique({
-    where: { id },
+  // Ownership is settled BEFORE anything is destroyed, and the same query
+  // fetches the keys the cleanup below needs. This is the delete path, so a
+  // missed check is unrecoverable: the row goes, and the video goes with it out
+  // of the private bucket. A lesson that does not belong to this chapter, in
+  // this course, is a 404 and nothing is touched.
+  const lesson = await db.lesson.findFirst({
+    where: { id, chapterId, chapter: { courseId } },
     select: { videoUrl: true, thumbnail: true },
   });
+
+  if (!lesson) {
+    return NextResponse.json({ error: "درس یافت نشد" }, { status: 404 });
+  }
 
   await db.lesson.delete({ where: { id } });
 
   // Video lives in the private bucket, its thumbnail in the public one.
-  await deleteFileQuiet("private", lesson?.videoUrl);
-  await deleteFileQuiet("public", lesson?.thumbnail);
+  await deleteFileQuiet("private", lesson.videoUrl);
+  await deleteFileQuiet("public", lesson.thumbnail);
 
   return NextResponse.json({ success: true });
 }
