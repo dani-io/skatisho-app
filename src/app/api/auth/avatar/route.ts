@@ -1,4 +1,5 @@
 import { Readable, Transform } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { NextRequest, NextResponse } from "next/server";
 import { getLiveSession } from "@/lib/presence";
 import { db } from "@/lib/db";
@@ -34,6 +35,21 @@ function byteLimiter(limit: number) {
   });
 
   return { stream, exceeded: () => exceeded };
+}
+
+/** Same contract as /api/upload's — see the note there. */
+function clientAborted(req: NextRequest, ...errors: unknown[]): boolean {
+  if (req.signal.aborted) return true;
+
+  return errors.some((err) => {
+    const { code, name } = (err ?? {}) as { code?: string; name?: string };
+    return (
+      code === "ECONNRESET" ||
+      code === "ECONNABORTED" ||
+      code === "EPIPE" ||
+      name === "AbortError"
+    );
+  });
 }
 
 /**
@@ -81,14 +97,26 @@ export async function POST(req: NextRequest) {
 
   const source = Readable.fromWeb(req.body as never);
   const limiter = byteLimiter(MAX_SIZE);
-  source.pipe(limiter.stream);
+
+  // pipeline(), not pipe(): pipe() leaves the request body without an 'error'
+  // listener, so a client vanishing mid-upload becomes an uncaughtException
+  // that kills the process for everyone. See /api/upload for the long version.
+  const piped: Promise<unknown> = pipeline(source, limiter.stream).catch(
+    (err: unknown) => err
+  );
 
   try {
     await uploadStream("private", key, limiter.stream, contentType);
   } catch (err) {
     source.destroy();
+    const pipeErr = await piped;
+
     if (limiter.exceeded() || err instanceof PayloadTooLargeError) {
       return tooLarge();
+    }
+    if (clientAborted(req, pipeErr, err)) {
+      console.warn(`[avatar] client disconnected during ${key}`);
+      return new NextResponse(null, { status: 499 });
     }
     console.error("[avatar] upload failed", err);
     return NextResponse.json({ error: "خطا در آپلود فایل" }, { status: 500 });

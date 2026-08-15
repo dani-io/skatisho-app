@@ -1,4 +1,5 @@
 import { Readable, Transform } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/access";
 import { uploadStream, type BucketKind } from "@/lib/s3";
@@ -47,6 +48,29 @@ function byteLimiter(limit: number) {
   });
 
   return { stream, exceeded: () => exceeded };
+}
+
+/**
+ * True when the transfer failed because the client — or a proxy in front of it
+ * — dropped the connection, rather than because anything went wrong here.
+ *
+ * There is no socket left to answer on, so this is a log line and not a 500:
+ * an aborted upload is routine (closed tab, flaky uplink, proxy read timeout)
+ * and must not read as a server fault in the logs.
+ */
+function clientAborted(req: NextRequest, ...errors: unknown[]): boolean {
+  // Next aborts this signal when the response socket closes before we finish.
+  if (req.signal.aborted) return true;
+
+  return errors.some((err) => {
+    const { code, name } = (err ?? {}) as { code?: string; name?: string };
+    return (
+      code === "ECONNRESET" ||
+      code === "ECONNABORTED" ||
+      code === "EPIPE" ||
+      name === "AbortError"
+    );
+  });
 }
 
 function safeSegment(value: string): string {
@@ -129,14 +153,45 @@ export async function POST(req: NextRequest) {
 
   const source = Readable.fromWeb(req.body as never);
   const limiter = byteLimiter(limit);
-  source.pipe(limiter.stream);
+
+  /**
+   * pipeline(), not source.pipe().
+   *
+   * pipe() attaches an 'error' listener to the DESTINATION only. `source` is
+   * the request body — when the client goes away mid-upload (closed tab, proxy
+   * read timeout) it emits `Error: aborted { code: 'ECONNRESET' }` with nothing
+   * listening, and Node turns an unhandled 'error' into an uncaughtException
+   * that takes down the whole process. One dropped upload logged out every user
+   * on the box.
+   *
+   * pipeline() handles both ends and destroys the other side on failure, so the
+   * upload below stops waiting for bytes that will never arrive instead of
+   * hanging until the multipart request times out.
+   */
+  const piped: Promise<unknown> = pipeline(source, limiter.stream).catch(
+    // Attached synchronously and resolving to the error rather than rethrowing:
+    // an unhandled rejection would crash the process just as hard as the
+    // uncaught 'error' it replaces.
+    (err: unknown) => err
+  );
 
   try {
     await uploadStream(bucket, key, limiter.stream, contentType);
   } catch (err) {
+    // Destroy first: if the upload failed on the storage side while the client
+    // was still sending, `piped` is still running and awaiting it would block
+    // until the whole body arrived. A promise settles once, so an abort that
+    // already rejected keeps its original error.
     source.destroy();
+    const pipeErr = await piped;
+
     if (limiter.exceeded() || err instanceof PayloadTooLargeError) {
       return tooLarge();
+    }
+    if (clientAborted(req, pipeErr, err)) {
+      console.warn(`[upload] client disconnected during ${key}`);
+      // 499: client closed request. Nothing is listening for it either way.
+      return new NextResponse(null, { status: 499 });
     }
     console.error("[upload] failed", err);
     return NextResponse.json({ error: "خطا در آپلود فایل" }, { status: 500 });
