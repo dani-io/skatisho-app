@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
-import { getGoogleOAuthConfig } from "@/lib/env";
+import {
+  getGoogleOAuthConfig,
+  getSiteUrlOrLocal,
+  SECURE_COOKIES,
+} from "@/lib/env";
 import { buildConsentUrl, OAUTH_STATE_COOKIE } from "@/lib/google";
 
 /**
@@ -17,11 +21,11 @@ export async function GET() {
   } catch {
     // Missing GOOGLE_* env. Don't echo the underlying message to the browser.
     console.error("[google-oauth] not configured");
+    // Via lib/env, not process.env.NEXT_PUBLIC_SITE_URL directly: a static read
+    // is inlined at build time and would bake the build host's domain into the
+    // image. This resolves at runtime, so the same image works under any domain.
     return NextResponse.redirect(
-      new URL(
-        "/admin/login?error=unconfigured",
-        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
-      )
+      new URL("/admin/login?error=unconfigured", getSiteUrlOrLocal())
     );
   }
 
@@ -35,7 +39,7 @@ export async function GET() {
   // would withhold the cookie on exactly that request.
   res.cookies.set(OAUTH_STATE_COOKIE, state, {
     httpOnly: true,
-    secure: false,
+    secure: SECURE_COOKIES,
     sameSite: "lax",
     maxAge: 600, // 10 minutes; a consent screen left open longer starts over
     path: "/",

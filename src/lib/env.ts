@@ -3,10 +3,25 @@
  *
  * Everything here is lazy: the throw happens on first use at runtime, never at
  * module import, so `next build` succeeds with an empty environment.
+ *
+ * It is also the ONLY way anything should read NEXT_PUBLIC_SITE_URL. Next
+ * inlines a static `process.env.NEXT_PUBLIC_SITE_URL` into the bundle at BUILD
+ * time, which bakes one hostname into the image; the dynamic `process.env[name]`
+ * below cannot be statically replaced, so it reads the real runtime environment.
+ * That is what lets the same image serve new.skatisho.com on the build host and
+ * skatisho.com in Iran with nothing but a different .env.
  */
 
+/**
+ * The single dynamic lookup. Everything else here is built on it, so there is
+ * exactly one place where an inlinable read could ever be reintroduced.
+ */
+function readEnv(name: string): string | undefined {
+  return process.env[name];
+}
+
 export function requireEnv(name: string): string {
-  const value = process.env[name];
+  const value = readEnv(name);
   if (!value) {
     // Deliberately loud. A silent fallback is how a public default secret ends
     // up signing production sessions.
@@ -29,14 +44,46 @@ export function getJwtSecret(): Uint8Array {
   return jwtSecret;
 }
 
+/** Trailing slashes off, so callers can concatenate a path without doubling. */
+function normalizeOrigin(value: string): string {
+  return value.replace(/\/+$/, "");
+}
+
 /**
- * Public origin, with any trailing slash removed so callers can concatenate a
- * path without producing a double slash (Google rejects a redirect_uri that
- * does not match the registered one byte for byte).
+ * Public origin. Google rejects a redirect_uri that does not match the
+ * registered one byte for byte, hence the normalisation.
  */
 export function getSiteUrl(): string {
-  return requireEnv("NEXT_PUBLIC_SITE_URL").replace(/\/+$/, "");
+  return normalizeOrigin(requireEnv("NEXT_PUBLIC_SITE_URL"));
 }
+
+/**
+ * getSiteUrl's non-throwing sibling, for error paths that need an origin to
+ * redirect to but must not themselves fail.
+ *
+ * The one caller is the Google sign-in route's catch block, which runs
+ * precisely when the OAuth config could not be resolved — and an unset
+ * NEXT_PUBLIC_SITE_URL is one of the reasons it would not resolve. Calling
+ * getSiteUrl() there would throw a second time while handling the first
+ * failure, turning a redirect to "?error=unconfigured" into a 500.
+ */
+export function getSiteUrlOrLocal(): string {
+  return normalizeOrigin(
+    readEnv("NEXT_PUBLIC_SITE_URL") || "http://localhost:3000"
+  );
+}
+
+/**
+ * `secure` for every cookie the app sets.
+ *
+ * Not a constant `false`: the app now terminates real TLS at nginx, and a
+ * session cookie without this flag is one plaintext request away from being
+ * lifted off the wire. Gated on NODE_ENV rather than on the request scheme so
+ * local `next dev` over http:// still receives its cookies — a secure cookie is
+ * silently dropped by the browser on a plaintext origin, which presents as
+ * "login does nothing".
+ */
+export const SECURE_COOKIES = process.env.NODE_ENV === "production";
 
 /** Splits a comma-separated env list, trimming blanks. */
 function parseCsv(raw: string | undefined): string[] {

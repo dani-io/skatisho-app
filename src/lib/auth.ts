@@ -1,6 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import { getJwtSecret } from "@/lib/env";
+import { getJwtSecret, SECURE_COOKIES } from "@/lib/env";
 
 const COOKIE_NAME = "skatisho-session";
 
@@ -51,7 +51,7 @@ export async function createSession(
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true,
-    secure: false,
+    secure: SECURE_COOKIES,
     sameSite: "lax",
     maxAge: 30 * 24 * 60 * 60, // 30 days
     path: "/",

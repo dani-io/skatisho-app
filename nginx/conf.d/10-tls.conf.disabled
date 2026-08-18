@@ -1,0 +1,123 @@
+# =============================================================================
+# Stage 2 — TLS. SHIPPED DISABLED ON PURPOSE.
+#
+# nginx's conf.d include is `*.conf`, so this file is inert until renamed:
+#
+#     mv nginx/conf.d/10-tls.conf.disabled nginx/conf.d/10-tls.conf
+#     docker compose exec nginx nginx -s reload
+#
+# It has to work this way round. `ssl_certificate` is validated at startup, so
+# an active TLS block on a fresh droplet — before certbot has issued anything —
+# makes nginx exit immediately and crash-loop, taking the ACME challenge
+# endpoint down with it and making the certificate impossible to obtain. Enable
+# this only AFTER the first certificate exists. See DEPLOY.md.
+#
+# DOMAIN: new.skatisho.com on DigitalOcean; skatisho.com on the Iran/Arvan VPS.
+# Switching means: server_name here + in 00-bootstrap.conf, the two cert paths
+# below, a reissued certificate, NEXT_PUBLIC_SITE_URL and APP_URL in .env, and
+# the Google Console redirect URI. NO application rebuild — the image carries no
+# domain (lib/env resolves NEXT_PUBLIC_SITE_URL at runtime).
+# =============================================================================
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name new.skatisho.com;
+
+    # Written by certbot into the certbot_conf volume, which nginx mounts
+    # read-only. Path follows the -d argument given at issuance.
+    ssl_certificate     /etc/letsencrypt/live/new.skatisho.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/new.skatisho.com/privkey.pem;
+
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    # -------------------------------------------------------------------------
+    # Body size.
+    #
+    # The app's own ceiling is 500MB for video and 10MB for images
+    # (src/app/api/upload/route.ts), enforced by a byte-counting Transform that
+    # does not trust Content-Length. 600m here leaves headroom so that a
+    # slightly-oversized file is rejected by the APP with a readable Persian
+    # error, rather than by nginx with a bare 413 the upload widget cannot parse.
+    #
+    # This is what replaces Cloudflare's old 100MB wall. There is no CDN in
+    # front of this server any more; the droplet has a public IP.
+    # -------------------------------------------------------------------------
+    client_max_body_size 600m;
+
+    # Shared proxy headers. X-Forwarded-Proto matters beyond hygiene: the
+    # payment routes fall back to the request origin when APP_URL is unset, and
+    # without this they would hand Zarinpal an http:// callback.
+    proxy_http_version 1.1;
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # Keep renewal working. certbot re-validates over plain HTTP on :80, but
+    # this costs nothing and survives a redirect misconfiguration.
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    # -------------------------------------------------------------------------
+    # Upload routes — THE critical block.
+    #
+    # `proxy_request_buffering off` is not a tuning knob here, it is the
+    # difference between working and not. With the default (on), nginx reads the
+    # entire 500MB body to a temp file BEFORE opening a connection to the app.
+    # Consequences, all of which look like bugs elsewhere:
+    #   - the browser progress bar reaches 100% while nothing has been stored,
+    #     then the request appears to hang for as long as the upload took again;
+    #   - the app's streaming design is defeated — src/app/api/upload/route.ts
+    #     pipelines the body into a multipart S3 upload specifically so memory
+    #     stays flat and bytes reach MinIO as they arrive;
+    #   - disk I/O doubles and /var/cache/nginx can fill.
+    # With it off, bytes flow browser -> nginx -> app -> MinIO continuously.
+    #
+    # These two routes are also excluded from the Next proxy matcher
+    # (src/proxy.ts) for the same reason, and authenticate themselves.
+    # -------------------------------------------------------------------------
+    location ~ ^/(api/upload|api/auth/avatar) {
+        proxy_pass http://app:3000;
+
+        proxy_request_buffering off;
+        proxy_buffering off;
+
+        # A 500MB upload on a slow Iranian uplink can legitimately take many
+        # minutes. These replace the Traefik 60s readTimeout that used to cut
+        # large uploads off mid-transfer.
+        client_body_timeout 600s;
+        proxy_read_timeout  600s;
+        proxy_send_timeout  600s;
+    }
+
+    # -------------------------------------------------------------------------
+    # Everything else: pages, /media/* images, and the authenticated video
+    # stream at /api/courses/*/lessons/*/video.
+    #
+    # `proxy_buffering off` is required twice over:
+    #   - Next streams App Router responses (Suspense/loading boundaries) and
+    #     buffering delays them until complete;
+    #   - the video route answers Range requests with 206 partials, and
+    #     buffering makes seeking behave badly on large files.
+    # Range and If-Range headers pass through untouched by default.
+    # -------------------------------------------------------------------------
+    location / {
+        proxy_pass http://app:3000;
+
+        proxy_buffering off;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+
+        # Websocket/upgrade passthrough. Nothing uses it today; harmless, and
+        # its absence is an obscure failure if anything ever does.
+        proxy_set_header Upgrade    $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}

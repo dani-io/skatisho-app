@@ -32,6 +32,11 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...except the template, which carries no secrets and IS the deployment
+# contract: DEPLOY.md starts with `cp .env.example .env` on a fresh host, so a
+# clone that does not include it cannot be deployed. (.dockerignore already
+# carried this same negation.)
+!.env.example
 
 # vercel
 .vercel

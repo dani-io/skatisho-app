@@ -1,84 +1,193 @@
 # =============================================================================
-# Skatisho — production stack (Coolify or any `docker compose` host)
+# Skatisho — self-contained production stack.
 #
-# Contains: app (Next.js standalone) + minio (private object storage) +
-#           a one-shot bucket bootstrap.
+# Replaces the Coolify deployment: no Traefik, no Cloudflare tunnel, no external
+# orchestrator. Everything the app needs is defined here and in ./nginx.
 #
-# NOT here (by design):
-#   - PostgreSQL  -> provisioned separately (Coolify New Resource) so it gets
-#                    managed backups and is never wiped by `compose down -v`.
+# Topology
+#   Internet :80/:443 -> nginx -> app:3000
+#                          |
+#                          +-- certbot (ACME webroot, shared volumes)
+#   app -> postgres:5432, minio:9000   (network `internal`, no route to the
+#                                       internet, no published ports)
 #
-# Security posture:
-#   - MinIO publishes NO ports to the host. Only `app` reaches it, over the
-#     internal Docker network at http://minio:9000.
-#   - The browser never touches MinIO: private objects stream through the app's
-#     authenticated routes; public objects are fronted by cdn.skatisho.com.
+# Only nginx publishes ports. Postgres and MinIO are unreachable from the host
+# and from the internet — the browser never talks to storage, it talks to the
+# app, which streams bytes on its behalf (see src/app/media and src/app/api).
 #
-# All values come from the environment — see .env.example.
+# -----------------------------------------------------------------------------
+# IMAGE PINS — every tag below is pinned and verified to exist upstream.
+# Docker Hub is NOT reachable from Iran, so a re-pull is not a fallback: these
+# images travel as a `docker save` tarball (see DEPLOY.md). Changing a pin means
+# re-exporting the tarball.
+#
+#   postgres:16-alpine                        Postgres 16.x
+#   minio/minio:RELEASE.2025-09-07T16-13-09Z  MinIO server
+#   minio/mc:RELEASE.2025-08-13T08-35-41Z     MinIO client (bucket bootstrap)
+#   nginx:1.27-alpine                         nginx 1.27
+#   certbot/certbot:v5.7.0                    Let's Encrypt client
+#
+# Lock these to digests before the transfer:
+#   docker image inspect --format '{{index .RepoDigests 0}}' <image>
+# -----------------------------------------------------------------------------
+#
+# All configuration comes from .env — see .env.example.
 # =============================================================================
 
 services:
   # ---------------------------------------------------------------------------
-  # app — Next.js (built from the Dockerfile in this repo)
+  # nginx — the only service exposed to the internet.
+  #
+  # Config lives in ./nginx/conf.d and is mounted read-only:
+  #   00-bootstrap.conf  HTTP only, serves the ACME challenge (used first)
+  #   10-tls.conf.disabled -> rename to .conf once a certificate exists
+  # nginx refuses to start if ssl_certificate points at a missing file, which is
+  # why TLS ships disabled rather than commented out. See DEPLOY.md.
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - certbot_conf:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot
+    depends_on:
+      - app
+    networks:
+      - edge
+
+  # ---------------------------------------------------------------------------
+  # certbot — renewal loop only. The FIRST certificate is issued by a one-off
+  # `docker compose run` (DEPLOY.md); this container just keeps it fresh.
+  #
+  # Renewal writes into certbot_conf, which nginx mounts read-only. nginx does
+  # not notice a new certificate on its own, hence the reload after renewal.
+  # ---------------------------------------------------------------------------
+  certbot:
+    image: certbot/certbot:v5.7.0
+    restart: unless-stopped
+    volumes:
+      - certbot_conf:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    entrypoint: >
+      /bin/sh -c "trap exit TERM;
+      while :; do
+        certbot renew --webroot -w /var/www/certbot --quiet;
+        sleep 12h & wait $${!};
+      done"
+    networks:
+      - edge
+
+  # ---------------------------------------------------------------------------
+  # app — Next.js 16 standalone (Dockerfile in this repo).
+  #
+  # DELIBERATELY SINGLE-REPLICA. src/lib/sms/store.ts keeps OTP codes in a
+  # per-process Map; a second replica would verify codes against the wrong
+  # process and OTP login would fail roughly half the time. Scaling out requires
+  # moving that store to Postgres or Redis first.
   # ---------------------------------------------------------------------------
   app:
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        # NEXT_PUBLIC_* are inlined into the client bundle at BUILD time.
-        NEXT_PUBLIC_CDN_URL: ${NEXT_PUBLIC_CDN_URL}
-        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
-        NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+        # The ONLY build-time value left. It is relative ("/media"), so it is
+        # domain-independent and never needs a rebuild for a domain change.
+        #
+        # NEXT_PUBLIC_SITE_URL is deliberately NOT passed: since lib/env reads it
+        # through a dynamic process.env[name] lookup, Next cannot inline it and
+        # it resolves at RUNTIME. That is what makes one image serve
+        # new.skatisho.com here and skatisho.com in Iran.
+        NEXT_PUBLIC_CDN_URL: ${NEXT_PUBLIC_CDN_URL:-/media}
+    # Named so `docker save` has something to name. Bump APP_VERSION in .env to
+    # tag a release; the default keeps local iteration cheap.
+    image: skatisho-app:${APP_VERSION:-local}
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      # --- Core ---
+      # Set here, not in .env, so they cannot be misconfigured per-host.
       - NODE_ENV=production
-      - DATABASE_URL=${DATABASE_URL}
-      # `:?` makes compose refuse to start when unset, rather than substituting
-      # a shared default that would sign real sessions.
-      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
-      - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
-
-      # --- Storage (must match src/lib/s3.ts exactly) ---
+      # MinIO is reachable only under this name on the internal network.
       - S3_ENDPOINT=http://minio:9000
-      - S3_REGION=${S3_REGION:-us-east-1}
-      - S3_ACCESS_KEY=${S3_ACCESS_KEY:?S3_ACCESS_KEY is required}
-      - S3_SECRET_KEY=${S3_SECRET_KEY:?S3_SECRET_KEY is required}
-      - S3_BUCKET_PRIVATE=${S3_BUCKET_PRIVATE}
-      - S3_BUCKET_PUBLIC=${S3_BUCKET_PUBLIC}
-      - NEXT_PUBLIC_CDN_URL=${NEXT_PUBLIC_CDN_URL}
-
-      # --- SMS (provider-agnostic layer) ---
-      - SMS_PROVIDER=${SMS_PROVIDER}
-      - SMS_SELFHOSTED_URL=${SMS_SELFHOSTED_URL}
-      - SMS_SELFHOSTED_KEY=${SMS_SELFHOSTED_KEY}
-      - SMS_KAVENEGAR_KEY=${SMS_KAVENEGAR_KEY}
-
-      # --- Payment (Zarinpal) ---
-      - ZARINPAL_MERCHANT=${ZARINPAL_MERCHANT}
-      - ZARINPAL_SANDBOX=${ZARINPAL_SANDBOX}
-
-      # --- Push notifications (VAPID) ---
-      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
-      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
-      - VAPID_EMAIL=${VAPID_EMAIL}
     depends_on:
+      postgres:
+        condition: service_healthy
       minio:
         condition: service_healthy
       createbuckets:
         condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - edge
+      - internal
     deploy:
+      replicas: 1
       resources:
         limits:
-          # Cap so a traffic spike can't starve other services on the host.
+          # Uploads stream (≈10MB of buffers regardless of file size), so this
+          # caps rendering, not transfers.
           memory: 2g
 
   # ---------------------------------------------------------------------------
-  # minio — private object storage, internal network only (NO published ports)
+  # migrate — one-shot `prisma migrate deploy`, gated before the app starts.
+  #
+  # Reuses the app image rather than adding a Prisma container: the CLI and its
+  # dependency closure are already staged into the runner stage (Dockerfile), so
+  # this costs zero extra download and zero extra bytes in the transfer tarball.
+  #
+  # Prisma is pinned to 6.19.3 in package.json — never v7.
+  # ---------------------------------------------------------------------------
+  migrate:
+    image: skatisho-app:${APP_VERSION:-local}
+    restart: "no"
+    command: ["node_modules/.bin/prisma", "migrate", "deploy"]
+    environment:
+      - DATABASE_URL=${DATABASE_URL:?DATABASE_URL is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
+  # ---------------------------------------------------------------------------
+  # postgres — internal only. No `ports:` anywhere in this file.
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-skatisho}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-skatisho}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      # -d as well as -U: without the database argument pg_isready reports ready
+      # while the init scripts are still creating POSTGRES_DB, and `migrate`
+      # would start against a database that does not exist yet.
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-skatisho} -d ${POSTGRES_DB:-skatisho}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - internal
+
+  # ---------------------------------------------------------------------------
+  # minio — object storage, internal only. NO published ports, by design.
+  # The console address is bound for completeness; nothing routes to it.
   # ---------------------------------------------------------------------------
   minio:
-    image: minio/minio
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
     command: server /data --console-address ":9001"
     restart: unless-stopped
     environment:
@@ -91,33 +200,57 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    # NOTE: intentionally no `ports:` — MinIO must not be reachable from the
-    # host or the internet. `app` talks to it over the internal network only.
+      start_period: 10s
+    networks:
+      - internal
 
   # ---------------------------------------------------------------------------
-  # createbuckets — one-shot: create the two buckets with correct policies,
-  # then exit. Makes the stack self-provisioning on any fresh host.
+  # createbuckets — one-shot, idempotent bucket bootstrap.
+  #
+  # Both buckets get `anonymous set none`. The public bucket does NOT need an
+  # anonymous download policy: since the /media route was added, public objects
+  # are fetched from MinIO with the root credentials by the app and streamed to
+  # the browser (src/app/media/[...key]/route.ts). Nothing anonymous ever reaches
+  # MinIO — it has no published port to reach.
+  #
+  # If a real CDN is ever put in front of /media, the public bucket would need:
+  #   mc anonymous set download local/$${S3_BUCKET_PUBLIC}
   # ---------------------------------------------------------------------------
   createbuckets:
-    image: minio/mc
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
     restart: "no"
     depends_on:
       minio:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
+      set -e;
       mc alias set local http://minio:9000 $${S3_ACCESS_KEY} $${S3_SECRET_KEY};
       mc mb --ignore-existing local/$${S3_BUCKET_PRIVATE};
       mc mb --ignore-existing local/$${S3_BUCKET_PUBLIC};
-      mc anonymous set none     local/$${S3_BUCKET_PRIVATE};
-      mc anonymous set download local/$${S3_BUCKET_PUBLIC};
-      echo 'Buckets ready: private=none, public=download';
+      mc anonymous set none local/$${S3_BUCKET_PRIVATE};
+      mc anonymous set none local/$${S3_BUCKET_PUBLIC};
+      echo 'buckets ready (both private to MinIO; served through the app)';
       "
     environment:
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:?S3_ACCESS_KEY is required}
       S3_SECRET_KEY: ${S3_SECRET_KEY:?S3_SECRET_KEY is required}
-      S3_BUCKET_PRIVATE: ${S3_BUCKET_PRIVATE}
-      S3_BUCKET_PUBLIC: ${S3_BUCKET_PUBLIC}
+      S3_BUCKET_PRIVATE: ${S3_BUCKET_PRIVATE:-sktsho-private}
+      S3_BUCKET_PUBLIC: ${S3_BUCKET_PUBLIC:-sktsho-public}
+    networks:
+      - internal
 
 volumes:
+  pg_data:
   minio_data:
+  certbot_conf:
+  certbot_www:
+
+networks:
+  # nginx <-> app only.
+  edge:
+  # app <-> postgres/minio. `internal: true` removes the default gateway, so
+  # these containers have no route off the host at all — not merely no inbound
+  # ports. Nothing here needs to make an outbound call.
+  internal:
+    internal: true
