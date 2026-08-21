@@ -145,6 +145,10 @@ RUN mkdir -p node_modules/.bin \
 # schema + migrations, so `prisma migrate deploy` can be run from a shell.
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
+# Preloaded before server.js so http.createServer gets requestTimeout as a
+# CONSTRUCTOR option — the only point where Node honors it (see the file).
+COPY --chown=nextjs:nodejs server-preload.cjs ./
+
 USER nextjs
 
 # server.js (from standalone) reads HOSTNAME and PORT from the environment.
@@ -153,4 +157,6 @@ ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+# --require runs the preload before server.js, which must happen before Next
+# constructs its HTTP server (Node only honors requestTimeout at construction).
+CMD ["node", "--require", "./server-preload.cjs", "server.js"]
