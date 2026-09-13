@@ -96,9 +96,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# ffmpeg for the future HLS pipeline; openssl for the Prisma engine at runtime.
+# openssl for the Prisma engine at runtime.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      ffmpeg openssl \
+      openssl \
     && rm -rf /var/lib/apt/lists/*
 
 # Run as a non-root user.
