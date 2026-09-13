@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
-  ArrowRight, Plus, Trash2, ChevronDown, GripVertical,
+  ArrowRight, Plus, Trash2, ChevronDown, ChevronUp, GripVertical,
   Play, Lock, Save, Video, Pencil,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn, toPersianDigits, formatDuration } from "@/lib/utils";
 import { FileUpload } from "@/components/ui/file-upload";
+import { cdnUrl } from "@/lib/storage";
 
 interface Lesson {
   id: string;
@@ -17,6 +18,7 @@ interface Lesson {
   description: string | null;
   videoUrl: string;
   duration: number;
+  thumbnail: string | null;
   isFree: boolean;
   order: number;
 }
@@ -61,12 +63,18 @@ export default function AdminCourseDetailPage() {
   const [addingLesson, setAddingLesson] = useState<string | null>(null);
   const [newLesson, setNewLesson] = useState({ title: "", description: "", videoUrl: "", duration: 0, isFree: false, thumbnail: "" });
 
-  // Edit mirrors the add form, but text-only: video and thumbnail are not
-  // replaceable here, so they are neither shown nor sent.
+  // Edit mirrors the add form. videoUrl/thumbnail hold only a NEWLY uploaded
+  // key ("" = no replacement); an empty one is left out of the PUT so the stored
+  // media is kept.
   const [editingLesson, setEditingLesson] = useState<string | null>(null);
-  const [editLesson, setEditLesson] = useState({ title: "", description: "", duration: 0, isFree: false });
+  const [editLesson, setEditLesson] = useState({ title: "", description: "", duration: 0, isFree: false, videoUrl: "", thumbnail: "" });
   const [editError, setEditError] = useState("");
   const [savingLesson, setSavingLesson] = useState(false);
+
+  // Chapter whose reorder request is in flight; its arrows stay disabled until
+  // the server answers so two moves cannot race each other.
+  const [reorderingChapter, setReorderingChapter] = useState<string | null>(null);
+  const [reorderError, setReorderError] = useState<{ chapterId: string; message: string } | null>(null);
 
   useEffect(() => {
     fetch(`/api/admin/courses/${courseId}`)
@@ -144,6 +152,8 @@ export default function AdminCourseDetailPage() {
       description: lesson.description || "",
       duration: lesson.duration,
       isFree: lesson.isFree,
+      videoUrl: "",
+      thumbnail: "",
     });
   }
 
@@ -152,10 +162,16 @@ export default function AdminCourseDetailPage() {
     setSavingLesson(true);
     setEditError("");
 
+    const { videoUrl, thumbnail, ...fields } = editLesson;
     const res = await fetch(`/api/admin/courses/${courseId}/chapters/${chapterId}/lessons`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: lessonId, ...editLesson }),
+      body: JSON.stringify({
+        id: lessonId,
+        ...fields,
+        ...(videoUrl ? { videoUrl } : {}),
+        ...(thumbnail ? { thumbnail } : {}),
+      }),
     });
     setSavingLesson(false);
 
@@ -178,6 +194,44 @@ export default function AdminCourseDetailPage() {
       };
     });
     setEditingLesson(null);
+  }
+
+  async function moveLesson(chapterId: string, lessonId: string, direction: -1 | 1) {
+    const chapter = course?.chapters.find((ch) => ch.id === chapterId);
+    if (!chapter) return;
+
+    const previous = chapter.lessons;
+    const ordered = [...previous].sort((a, b) => a.order - b.order);
+    const from = ordered.findIndex((l) => l.id === lessonId);
+    const to = from + direction;
+    if (from < 0 || to < 0 || to >= ordered.length) return;
+
+    [ordered[from], ordered[to]] = [ordered[to], ordered[from]];
+    const next = ordered.map((l, index) => ({ ...l, order: index }));
+
+    const setLessons = (lessons: Lesson[]) =>
+      setCourse((prev) =>
+        prev
+          ? { ...prev, chapters: prev.chapters.map((ch) => (ch.id === chapterId ? { ...ch, lessons } : ch)) }
+          : prev
+      );
+
+    setLessons(next);
+    setReorderError(null);
+    setReorderingChapter(chapterId);
+
+    const res = await fetch(`/api/admin/courses/${courseId}/chapters/${chapterId}/lessons/reorder`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lessonIds: next.map((l) => l.id) }),
+    }).catch(() => null);
+    setReorderingChapter(null);
+
+    if (!res?.ok) {
+      const data = await res?.json().catch(() => ({}));
+      setLessons(previous);
+      setReorderError({ chapterId, message: data?.error || "خطا در تغییر ترتیب دروس" });
+    }
   }
 
   async function deleteLesson(chapterId: string, lessonId: string) {
@@ -345,7 +399,10 @@ export default function AdminCourseDetailPage() {
               {/* Lessons */}
               {openChapters.has(chapter.id) && (
                 <div>
-                  {chapter.lessons.map((lesson) =>
+                  {reorderError?.chapterId === chapter.id && (
+                    <p className="px-4 py-2 border-t border-surface-container text-xs text-error">{reorderError.message}</p>
+                  )}
+                  {[...chapter.lessons].sort((a, b) => a.order - b.order).map((lesson, index, lessons) =>
                     editingLesson === lesson.id ? (
                       <div key={lesson.id} className="p-3 border-t border-surface-container bg-surface-dim/50 space-y-2">
                         <input
@@ -378,7 +435,37 @@ export default function AdminCourseDetailPage() {
                             رایگان
                           </label>
                         </div>
-                        {/* Video and thumbnail are intentionally absent — this form never sends them. */}
+                        <div className="space-y-1">
+                          <p className="text-xs font-medium">ویدیوی فعلی</p>
+                          <p className="text-xs text-on-surface-muted truncate" dir="ltr">{lesson.videoUrl}</p>
+                        </div>
+                        <FileUpload
+                          label="ویدیوی جدید (اختیاری)"
+                          accept="video"
+                          bucket="private"
+                          folder="courses/videos"
+                          value={editLesson.videoUrl || null}
+                          onChange={(url) => setEditLesson({ ...editLesson, videoUrl: url })}
+                          onClear={() => setEditLesson({ ...editLesson, videoUrl: "" })}
+                        />
+                        <div className="space-y-1">
+                          <p className="text-xs font-medium">تصویر بندانگشتی فعلی</p>
+                          {lesson.thumbnail ? (
+                            <img src={cdnUrl(lesson.thumbnail)} alt="" className="w-32 h-20 object-cover rounded-lg border border-surface-container" />
+                          ) : (
+                            <p className="text-xs text-on-surface-muted">ندارد</p>
+                          )}
+                        </div>
+                        <FileUpload
+                          label="تصویر بندانگشتی جدید (اختیاری)"
+                          accept="image"
+                          bucket="public"
+                          folder="courses/thumbnails"
+                          value={editLesson.thumbnail || null}
+                          onChange={(url) => setEditLesson({ ...editLesson, thumbnail: url })}
+                          onClear={() => setEditLesson({ ...editLesson, thumbnail: "" })}
+                        />
+                        <p className="text-[10px] text-on-surface-muted">اگر فایل جدیدی انتخاب نشود، فایل فعلی حفظ می‌شود.</p>
                         {editError && <p className="text-xs text-error">{editError}</p>}
                         <div className="flex gap-2">
                           <Button size="sm" onClick={() => saveLesson(chapter.id, lesson.id)} disabled={savingLesson || !editLesson.title.trim()}>
@@ -389,6 +476,26 @@ export default function AdminCourseDetailPage() {
                       </div>
                     ) : (
                       <div key={lesson.id} className="flex items-center gap-3 px-4 py-2.5 border-t border-surface-container text-sm">
+                        <div className="flex flex-col shrink-0">
+                          <button
+                            onClick={() => moveLesson(chapter.id, lesson.id, -1)}
+                            disabled={index === 0 || reorderingChapter === chapter.id}
+                            title="انتقال به بالا"
+                            aria-label="انتقال به بالا"
+                            className="p-0.5 rounded hover:bg-primary/5 disabled:opacity-30 disabled:pointer-events-none"
+                          >
+                            <ChevronUp className="w-3.5 h-3.5 text-on-surface-muted" />
+                          </button>
+                          <button
+                            onClick={() => moveLesson(chapter.id, lesson.id, 1)}
+                            disabled={index === lessons.length - 1 || reorderingChapter === chapter.id}
+                            title="انتقال به پایین"
+                            aria-label="انتقال به پایین"
+                            className="p-0.5 rounded hover:bg-primary/5 disabled:opacity-30 disabled:pointer-events-none"
+                          >
+                            <ChevronDown className="w-3.5 h-3.5 text-on-surface-muted" />
+                          </button>
+                        </div>
                         <Video className="w-4 h-4 text-on-surface-muted shrink-0" />
                         <span className="flex-1">{lesson.title}</span>
                         <span className="text-xs text-on-surface-muted">{formatDuration(lesson.duration)}</span>

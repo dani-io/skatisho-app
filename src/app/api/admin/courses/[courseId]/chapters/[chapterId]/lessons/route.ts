@@ -47,13 +47,27 @@ export async function POST(
 }
 
 /**
- * Text-only edit of an existing lesson.
+ * A replacement media key sent by the edit form. It has to be a bare storage key
+ * (never an http URL) inside the folder FileUpload writes that media to. The
+ * check matters beyond tidiness: whatever key is stored here is deleted from the
+ * bucket the next time the lesson's media is replaced, so accepting an arbitrary
+ * key would let a later edit delete an object this lesson never owned.
+ */
+function mediaKey(value: unknown, folder: string): string | null {
+  if (typeof value !== "string") return null;
+  const key = value.trim();
+  if (!key.startsWith(`${folder}/`) || key.includes("..")) return null;
+  return key;
+}
+
+/**
+ * Edit an existing lesson, optionally replacing its video and/or thumbnail.
  *
- * videoUrl and thumbnail are deliberately NOT writable here. Replacing either
- * one orphans the object it points at (private bucket for video, public for the
- * thumbnail), so media replacement needs the same cleanup DELETE does and is a
- * separate change. Omitting them from `data` also means a form that never sends
- * a video cannot blank the stored key.
+ * videoUrl and thumbnail are only written when present in the body. Absent means
+ * "keep what is stored", so a text-only save can never blank the video key.
+ * When a new key replaces an old one, the old object is deleted from its bucket
+ * (private for video, public for the thumbnail) so replacements do not orphan
+ * files.
  */
 export async function PUT(
   req: NextRequest,
@@ -93,19 +107,39 @@ export async function PUT(
       ? body.description.trim()
       : null;
 
+  let videoUrl: string | undefined;
+  if (body.videoUrl !== undefined) {
+    videoUrl = mediaKey(body.videoUrl, "courses/videos") ?? undefined;
+    if (!videoUrl) {
+      return NextResponse.json({ error: "کلید ویدیو نامعتبر است" }, { status: 400 });
+    }
+  }
+
+  let thumbnail: string | undefined;
+  if (body.thumbnail !== undefined) {
+    thumbnail = mediaKey(body.thumbnail, "courses/thumbnails") ?? undefined;
+    if (!thumbnail) {
+      return NextResponse.json({ error: "کلید تصویر بندانگشتی نامعتبر است" }, { status: 400 });
+    }
+  }
+
   // The lesson is addressed by id, but the id alone says nothing about who owns
   // it. Without this check any admin holding "courses" could edit a lesson in
   // any other course by posting its id to a chapter they can reach. Scoping to
   // BOTH the chapter and that chapter's course means the URL has to name the
-  // real owner; anything else is a 404, same as an unknown id.
-  const owned = await db.lesson.findFirst({
+  // real owner; anything else is a 404, same as an unknown id. The same query
+  // fetches the current media keys, which a replacement has to clean up.
+  const existing = await db.lesson.findFirst({
     where: { id, chapterId, chapter: { courseId } },
-    select: { id: true },
+    select: { videoUrl: true, thumbnail: true },
   });
 
-  if (!owned) {
+  if (!existing) {
     return NextResponse.json({ error: "درس یافت نشد" }, { status: 404 });
   }
+
+  const videoReplaced = videoUrl !== undefined && videoUrl !== existing.videoUrl;
+  const thumbnailReplaced = thumbnail !== undefined && thumbnail !== existing.thumbnail;
 
   const lesson = await db.lesson.update({
     where: { id },
@@ -114,12 +148,19 @@ export async function PUT(
       description,
       duration,
       isFree: body.isFree,
+      ...(videoReplaced ? { videoUrl } : {}),
+      ...(thumbnailReplaced ? { thumbnail } : {}),
       // Reordering is not part of this form; only honour an explicit valid value.
       ...(Number.isInteger(body.order) && body.order >= 0
         ? { order: body.order }
         : {}),
     },
   });
+
+  // Old objects go only after the row points at the new keys. Deleting first
+  // would leave the lesson referencing a missing video if the update failed.
+  if (videoReplaced) await deleteFileQuiet("private", existing.videoUrl);
+  if (thumbnailReplaced) await deleteFileQuiet("public", existing.thumbnail);
 
   return NextResponse.json({ lesson });
 }
