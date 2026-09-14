@@ -76,6 +76,11 @@ export default function AdminCourseDetailPage() {
   const [reorderingChapter, setReorderingChapter] = useState<string | null>(null);
   const [reorderError, setReorderError] = useState<{ chapterId: string; message: string } | null>(null);
 
+  // Same idea one level up: while a chapter move is in flight every chapter
+  // arrow is disabled, since each request sends the whole ordered list.
+  const [movingChapters, setMovingChapters] = useState(false);
+  const [chapterReorderError, setChapterReorderError] = useState("");
+
   useEffect(() => {
     fetch(`/api/admin/courses/${courseId}`)
       .then((r) => r.json())
@@ -234,6 +239,39 @@ export default function AdminCourseDetailPage() {
     }
   }
 
+  async function moveChapter(chapterId: string, direction: -1 | 1) {
+    if (!course) return;
+
+    const previous = course.chapters;
+    const ordered = [...previous].sort((a, b) => a.order - b.order);
+    const from = ordered.findIndex((ch) => ch.id === chapterId);
+    const to = from + direction;
+    if (from < 0 || to < 0 || to >= ordered.length) return;
+
+    [ordered[from], ordered[to]] = [ordered[to], ordered[from]];
+    const next = ordered.map((ch, index) => ({ ...ch, order: index }));
+
+    const setChapters = (chapters: Chapter[]) =>
+      setCourse((prev) => (prev ? { ...prev, chapters } : prev));
+
+    setChapters(next);
+    setChapterReorderError("");
+    setMovingChapters(true);
+
+    const res = await fetch(`/api/admin/courses/${courseId}/chapters/reorder`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chapterIds: next.map((ch) => ch.id) }),
+    }).catch(() => null);
+    setMovingChapters(false);
+
+    if (!res?.ok) {
+      const data = await res?.json().catch(() => ({}));
+      setChapters(previous);
+      setChapterReorderError(data?.error || "خطا در تغییر ترتیب فصل‌ها");
+    }
+  }
+
   async function deleteLesson(chapterId: string, lessonId: string) {
     if (!confirm("این درس حذف می‌شود. مطمئنید؟")) return;
     await fetch(`/api/admin/courses/${courseId}/chapters/${chapterId}/lessons?id=${lessonId}`, {
@@ -379,18 +417,48 @@ export default function AdminCourseDetailPage() {
           <h2 className="font-bold text-sm">فصل‌ها و دروس</h2>
         </div>
 
+        {chapterReorderError && (
+          <p className="mb-3 text-xs text-error">{chapterReorderError}</p>
+        )}
+
         <div className="space-y-3">
-          {course.chapters.map((chapter) => (
+          {[...course.chapters].sort((a, b) => a.order - b.order).map((chapter, chapterIndex, chapters) => (
             <div key={chapter.id} className="border border-surface-container rounded-xl overflow-hidden">
               {/* Chapter Header */}
               <div className="flex items-center gap-2 p-3 bg-surface-dim">
-                <button onClick={() => toggleChapter(chapter.id)}>
+                <button
+                  onClick={() => toggleChapter(chapter.id)}
+                  title={openChapters.has(chapter.id) ? "بستن فصل" : "باز کردن فصل"}
+                  aria-label={openChapters.has(chapter.id) ? "بستن فصل" : "باز کردن فصل"}
+                >
                   <ChevronDown className={cn("w-4 h-4 transition-transform", openChapters.has(chapter.id) && "rotate-180")} />
                 </button>
                 <span className="flex-1 text-sm font-medium">{chapter.title}</span>
                 <span className="text-xs text-on-surface-muted">
                   {toPersianDigits(chapter.lessons.length)} درس
                 </span>
+                {/* Reorder arrows — boxed so they read as a control of their own,
+                    not as a second copy of the expand/collapse chevron. */}
+                <div className="flex flex-col shrink-0 rounded-lg border border-surface-container bg-white overflow-hidden">
+                  <button
+                    onClick={() => moveChapter(chapter.id, -1)}
+                    disabled={chapterIndex === 0 || movingChapters}
+                    title="انتقال فصل به بالا"
+                    aria-label="انتقال فصل به بالا"
+                    className="px-1 py-0.5 hover:bg-primary/5 disabled:opacity-30 disabled:pointer-events-none"
+                  >
+                    <ChevronUp className="w-3.5 h-3.5 text-on-surface-muted" />
+                  </button>
+                  <button
+                    onClick={() => moveChapter(chapter.id, 1)}
+                    disabled={chapterIndex === chapters.length - 1 || movingChapters}
+                    title="انتقال فصل به پایین"
+                    aria-label="انتقال فصل به پایین"
+                    className="px-1 py-0.5 border-t border-surface-container hover:bg-primary/5 disabled:opacity-30 disabled:pointer-events-none"
+                  >
+                    <ChevronDown className="w-3.5 h-3.5 text-on-surface-muted" />
+                  </button>
+                </div>
                 <button onClick={() => deleteChapter(chapter.id)} className="p-1 hover:bg-red-50 rounded">
                   <Trash2 className="w-3.5 h-3.5 text-red-500" />
                 </button>
