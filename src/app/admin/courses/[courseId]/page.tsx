@@ -354,9 +354,10 @@ export default function AdminCourseDetailPage() {
               >
                 <option value="GENERAL">عمومی</option>
                 <option value="SPEED">سرعت</option>
-                <option value="FREESTYLE">فریستایل</option>
-                <option value="SLALOM">اسلالوم</option>
-                <option value="HOCKEY">هاکی</option>
+                <option value="FREESTYLE">فری‌استایل</option>
+                <option value="ARTISTIC">هنری</option>
+                <option value="SKATEBOARD">اسکیت برد</option>
+                <option value="ROLLERBALL">رولبال</option>
               </select>
             </div>
             <div>

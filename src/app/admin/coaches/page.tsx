@@ -25,8 +25,9 @@ const SPECIALTY_SUGGESTIONS = [
   "آموزش عمومی",
   "اسکیت سرعت",
   "فری‌استایل",
-  "اسلالوم",
-  "هاکی",
+  "هنری",
+  "اسکیت برد",
+  "رولبال",
 ];
 
 export default function AdminCoachesPage() {

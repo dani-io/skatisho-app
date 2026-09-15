@@ -19,8 +19,9 @@ const SPECIALTY_COLORS: Record<string, string> = {
   "اسکیت عمومی": "bg-blue-100 text-blue-700",
   "اسکیت سرعت": "bg-red-100 text-red-700",
   "فری‌استایل": "bg-purple-100 text-purple-700",
-  "اسلالوم": "bg-green-100 text-green-700",
-  "هاکی": "bg-amber-100 text-amber-700",
+  "هنری": "bg-pink-100 text-pink-700",
+  "اسکیت برد": "bg-green-100 text-green-700",
+  "رولبال": "bg-amber-100 text-amber-700",
 };
 
 export default function CoachesPage() {

@@ -19,9 +19,10 @@ interface Course {
 const categoryLabels: Record<string, string> = {
   GENERAL: "عمومی",
   SPEED: "سرعت",
-  FREESTYLE: "فریستایل",
-  SLALOM: "اسلالوم",
-  HOCKEY: "هاکی",
+  FREESTYLE: "فری‌استایل",
+  ARTISTIC: "هنری",
+  SKATEBOARD: "اسکیت برد",
+  ROLLERBALL: "رولبال",
 };
 
 const levelLabels: Record<string, string> = {

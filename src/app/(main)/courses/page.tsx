@@ -28,8 +28,9 @@ const CATEGORIES = [
   { id: "GENERAL", label: "عمومی" },
   { id: "SPEED", label: "سرعت" },
   { id: "FREESTYLE", label: "فری‌استایل" },
-  { id: "SLALOM", label: "اسلالوم" },
-  { id: "HOCKEY", label: "هاکی" },
+  { id: "ARTISTIC", label: "هنری" },
+  { id: "SKATEBOARD", label: "اسکیت برد" },
+  { id: "ROLLERBALL", label: "رولبال" },
 ];
 
 export default function CoursesPage() {

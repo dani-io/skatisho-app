@@ -111,8 +111,9 @@ enum CourseCategory {
   GENERAL
   SPEED
   FREESTYLE
-  SLALOM
-  HOCKEY
+  ARTISTIC
+  SKATEBOARD
+  ROLLERBALL
 }
 
 model Chapter {
