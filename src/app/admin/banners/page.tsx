@@ -9,13 +9,20 @@ import { cdnUrl } from "@/lib/storage";
 interface Banner {
   id: string;
   title: string | null;
+  description: string | null;
   link: string | null;
-  imageKey: string;
+  imageKey: string | null;
+  backgroundColor: string | null;
+  textColor: string | null;
   order: number;
   isActive: boolean;
 }
 
-const emptyForm = { title: "", link: "", imageKey: "", order: "0", isActive: true };
+type BannerMode = "image" | "color";
+
+const DEFAULT_BG = "#EF4444";
+const DEFAULT_TEXT = "#FFFFFF";
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 
 export default function AdminBannersPage() {
   const [banners, setBanners] = useState<Banner[]>([]);
@@ -27,6 +34,10 @@ export default function AdminBannersPage() {
   const [title, setTitle] = useState("");
   const [link, setLink] = useState("");
   const [imageKey, setImageKey] = useState("");
+  const [mode, setMode] = useState<BannerMode>("image");
+  const [description, setDescription] = useState("");
+  const [backgroundColor, setBackgroundColor] = useState(DEFAULT_BG);
+  const [textColor, setTextColor] = useState(DEFAULT_TEXT);
   const [order, setOrder] = useState("0");
   const [isActive, setIsActive] = useState(true);
 
@@ -41,6 +52,7 @@ export default function AdminBannersPage() {
 
   function resetForm() {
     setTitle(""); setLink(""); setImageKey(""); setOrder("0"); setIsActive(true);
+    setMode("image"); setDescription(""); setBackgroundColor(DEFAULT_BG); setTextColor(DEFAULT_TEXT);
     setEditingId(null);
   }
 
@@ -48,17 +60,37 @@ export default function AdminBannersPage() {
     setEditingId(b.id);
     setTitle(b.title || "");
     setLink(b.link || "");
-    setImageKey(b.imageKey);
+    setImageKey(b.imageKey || "");
+    setMode(b.imageKey ? "image" : "color");
+    setDescription(b.description || "");
+    setBackgroundColor(b.backgroundColor || DEFAULT_BG);
+    setTextColor(b.textColor || DEFAULT_TEXT);
     setOrder(String(b.order));
     setIsActive(b.isActive);
     setShowForm(true);
   }
 
+  // An image banner needs an image; a colour banner needs valid colours and some text to show.
+  const canSave =
+    mode === "image"
+      ? !!imageKey
+      : HEX_RE.test(backgroundColor) && HEX_RE.test(textColor) && !!(title || description);
+
   async function handleSave() {
-    if (!imageKey) return;
+    if (!canSave) return;
     setSaving(true);
     try {
-      const body = { title: title || null, link: link || null, imageKey, order: parseInt(order) || 0, isActive };
+      const isColor = mode === "color";
+      const body = {
+        title: title || null,
+        link: link || null,
+        imageKey: isColor ? null : imageKey,
+        description: isColor ? description || null : null,
+        backgroundColor: isColor ? backgroundColor : null,
+        textColor: isColor ? textColor : null,
+        order: parseInt(order) || 0,
+        isActive,
+      };
       const res = editingId
         ? await fetch("/api/admin/banners", {
             method: "PUT",
@@ -123,15 +155,70 @@ export default function AdminBannersPage() {
             </button>
           </div>
           <div className="space-y-3">
-            <FileUpload
-              label="تصویر بنر"
-              accept="image"
-              bucket="public"
-              folder="banners"
-              value={imageKey}
-              onChange={setImageKey}
-              onClear={() => setImageKey("")}
-            />
+            <div>
+              <label className="text-[11px] text-on-surface-muted mb-1 block">نوع بنر</label>
+              <div className="flex gap-2">
+                <button onClick={() => setMode("image")}
+                  className={`flex-1 py-2 rounded-xl text-xs font-medium border-2 ${mode === "image" ? "border-primary bg-primary/5" : "border-surface-container"}`}>
+                  بنر تصویری
+                </button>
+                <button onClick={() => setMode("color")}
+                  className={`flex-1 py-2 rounded-xl text-xs font-medium border-2 ${mode === "color" ? "border-primary bg-primary/5" : "border-surface-container"}`}>
+                  بنر رنگی
+                </button>
+              </div>
+              <p className="text-[11px] text-on-surface-muted mt-1.5">
+                {mode === "image"
+                  ? "یک تصویر آپلود کنید. عنوان روی تصویر نمایش داده می‌شود."
+                  : "بدون تصویر؛ عنوان و توضیحات روی رنگ پس‌زمینه نمایش داده می‌شوند."}
+              </p>
+            </div>
+            {mode === "image" ? (
+              <FileUpload
+                label="تصویر بنر"
+                accept="image"
+                bucket="public"
+                folder="banners"
+                value={imageKey}
+                onChange={setImageKey}
+                onClear={() => setImageKey("")}
+              />
+            ) : (
+              <>
+                <div>
+                  <label className="text-[11px] text-on-surface-muted mb-1 block">توضیحات (اختیاری)</label>
+                  <input type="text" value={description} onChange={(e) => setDescription(e.target.value)}
+                    placeholder="مثلاً همین الان اشتراک بگیرید"
+                    className="w-full border border-surface-container rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {([
+                    ["رنگ پس‌زمینه", backgroundColor, setBackgroundColor, DEFAULT_BG],
+                    ["رنگ متن", textColor, setTextColor, DEFAULT_TEXT],
+                  ] as const).map(([label, value, setValue, fallback]) => (
+                    <div key={label}>
+                      <label className="text-[11px] text-on-surface-muted mb-1 block">{label}</label>
+                      <div className="flex items-center gap-2">
+                        <input type="color" value={HEX_RE.test(value) ? value : fallback}
+                          onChange={(e) => setValue(e.target.value.toUpperCase())}
+                          className="w-10 h-9 shrink-0 rounded-lg border border-surface-container cursor-pointer" />
+                        <input type="text" value={value} onChange={(e) => setValue(e.target.value)}
+                          dir="ltr" maxLength={7}
+                          className={`w-full border rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:border-primary ${HEX_RE.test(value) ? "border-surface-container" : "border-red-300"}`} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <label className="text-[11px] text-on-surface-muted mb-1 block">پیش‌نمایش</label>
+                  <div className="rounded-xl p-4 flex flex-col justify-center gap-1 min-h-[80px]"
+                    style={{ backgroundColor: HEX_RE.test(backgroundColor) ? backgroundColor : DEFAULT_BG, color: HEX_RE.test(textColor) ? textColor : DEFAULT_TEXT }}>
+                    <p className="text-sm font-bold">{title || "عنوان بنر"}</p>
+                    {description && <p className="text-xs opacity-90">{description}</p>}
+                  </div>
+                </div>
+              </>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-[11px] text-on-surface-muted mb-1 block">عنوان (اختیاری)</label>
@@ -167,7 +254,7 @@ export default function AdminBannersPage() {
                 </div>
               </div>
             </div>
-            <Button size="full" onClick={handleSave} disabled={!imageKey || saving}>
+            <Button size="full" onClick={handleSave} disabled={!canSave || saving}>
               {saving ? "ذخیره..." : editingId ? "بروزرسانی بنر" : "افزودن بنر"}
             </Button>
           </div>
@@ -180,9 +267,16 @@ export default function AdminBannersPage() {
             <div key={b.id}
               className={`bg-white rounded-[var(--radius-card)] border p-4 ${b.isActive ? "border-surface-container" : "border-red-200 bg-red-50/30"}`}>
               <div className="flex items-start gap-4">
-                <div className="w-20 h-[60px] shrink-0 rounded-xl overflow-hidden bg-surface-dim">
-                  <img src={cdnUrl(b.imageKey)} alt={b.title || ""} className="w-full h-full object-cover" />
-                </div>
+                {b.imageKey ? (
+                  <div className="w-20 h-[60px] shrink-0 rounded-xl overflow-hidden bg-surface-dim">
+                    <img src={cdnUrl(b.imageKey)} alt={b.title || ""} className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="w-20 h-[60px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center p-1.5 text-[10px] font-bold text-center leading-tight"
+                    style={{ backgroundColor: b.backgroundColor || DEFAULT_BG, color: b.textColor || DEFAULT_TEXT }}>
+                    <span className="line-clamp-2">{b.title || "بنر رنگی"}</span>
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold truncate">{b.title || "بدون عنوان"}</p>
                   {b.link && <p className="text-[11px] text-on-surface-muted truncate" dir="ltr">{b.link}</p>}

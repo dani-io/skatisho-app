@@ -18,17 +18,16 @@ export async function POST(req: NextRequest) {
   const denied = await requirePermission("banners");
   if (denied) return denied;
 
-  const { title, link, imageKey, order, isActive } = await req.json();
-
-  if (!imageKey) {
-    return NextResponse.json({ error: "imageKey required" }, { status: 400 });
-  }
+  const { title, description, link, imageKey, backgroundColor, textColor, order, isActive } = await req.json();
 
   const banner = await db.banner.create({
     data: {
       title: title || null,
+      description: description || null,
       link: link || null,
-      imageKey,
+      imageKey: imageKey || null,
+      backgroundColor: backgroundColor || null,
+      textColor: textColor || null,
       order: order ?? 0,
       isActive: isActive ?? true,
     },
@@ -41,7 +40,7 @@ export async function PUT(req: NextRequest) {
   const denied = await requirePermission("banners");
   if (denied) return denied;
 
-  const { id, title, link, imageKey, order, isActive } = await req.json();
+  const { id, title, description, link, imageKey, backgroundColor, textColor, order, isActive } = await req.json();
 
   if (!id) {
     return NextResponse.json({ error: "id required" }, { status: 400 });
@@ -51,8 +50,11 @@ export async function PUT(req: NextRequest) {
     where: { id },
     data: {
       ...(title !== undefined && { title }),
+      ...(description !== undefined && { description }),
       ...(link !== undefined && { link }),
       ...(imageKey !== undefined && { imageKey }),
+      ...(backgroundColor !== undefined && { backgroundColor }),
+      ...(textColor !== undefined && { textColor }),
       ...(order !== undefined && { order }),
       ...(isActive !== undefined && { isActive }),
     },
@@ -71,7 +73,7 @@ export async function DELETE(req: NextRequest) {
     select: { imageKey: true },
   });
   await db.banner.delete({ where: { id } });
-  await deleteFileQuiet("public", banner?.imageKey);
+  if (banner?.imageKey) await deleteFileQuiet("public", banner.imageKey);
 
   return NextResponse.json({ ok: true });
 }

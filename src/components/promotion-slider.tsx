@@ -7,8 +7,46 @@ import { cdnUrl } from "@/lib/storage";
 interface Slide {
   id: string;
   title: string | null;
+  description: string | null;
   link: string | null;
-  imageKey: string;
+  imageKey: string | null;
+  backgroundColor: string | null;
+  textColor: string | null;
+}
+
+const DEFAULT_BG = "#EF4444";
+const DEFAULT_TEXT = "#FFFFFF";
+
+function SlideContent({ slide }: { slide: Slide }) {
+  if (slide.imageKey) {
+    return (
+      <>
+        <img
+          src={cdnUrl(slide.imageKey)}
+          alt={slide.title || ""}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        {slide.title && (
+          <div className="absolute inset-0 bg-gradient-to-l from-black/50 to-transparent p-4 flex flex-col justify-center">
+            <p className="text-sm font-bold text-white">{slide.title}</p>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <div
+      className="absolute inset-0 p-5 flex flex-col justify-center gap-1.5"
+      style={{
+        backgroundColor: slide.backgroundColor || DEFAULT_BG,
+        color: slide.textColor || DEFAULT_TEXT,
+      }}
+    >
+      {slide.title && <p className="text-lg font-bold">{slide.title}</p>}
+      {slide.description && <p className="text-sm opacity-90">{slide.description}</p>}
+    </div>
+  );
 }
 
 export default function PromotionSlider() {
@@ -74,24 +112,19 @@ export default function PromotionSlider() {
         className="flex overflow-x-auto snap-x snap-mandatory rounded-[var(--radius-card)] h-[160px]"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
-        {slides.map((slide) => (
-          <Link
-            key={slide.id}
-            href={slide.link || "#"}
-            className="snap-start min-w-full rounded-[var(--radius-card)] overflow-hidden relative h-[160px] block"
-          >
-            <img
-              src={cdnUrl(slide.imageKey)}
-              alt={slide.title || ""}
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-            {slide.title && (
-              <div className="absolute inset-0 bg-gradient-to-l from-black/50 to-transparent p-4 flex flex-col justify-center">
-                <p className="text-sm font-bold text-white">{slide.title}</p>
-              </div>
-            )}
-          </Link>
-        ))}
+        {slides.map((slide) => {
+          const className =
+            "snap-start min-w-full rounded-[var(--radius-card)] overflow-hidden relative h-[160px] block";
+          return slide.link ? (
+            <Link key={slide.id} href={slide.link} className={className}>
+              <SlideContent slide={slide} />
+            </Link>
+          ) : (
+            <div key={slide.id} className={className}>
+              <SlideContent slide={slide} />
+            </div>
+          );
+        })}
       </div>
 
       <div className="flex justify-center gap-1.5 mt-2">

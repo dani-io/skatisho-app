@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { NotificationBell } from "@/components/layout/notification-bell";
-import { ChevronLeft, Zap } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { CourseCard } from "@/components/course/course-card";
 import PromotionSlider from "@/components/promotion-slider";
@@ -96,21 +96,6 @@ export default function HomePage() {
 
       {/* Promotion Slider */}
       <PromotionSlider />
-
-      {/* Special Offer Banner (new users) */}
-      {!hasSubscription && (
-        <Link href="/subscription" className="block mb-4">
-          <div className="bg-gradient-to-l from-red-500 to-orange-500 rounded-[var(--radius-card)] p-4 text-white">
-            <div className="flex items-center gap-2 mb-1">
-              <Zap className="w-4 h-4" />
-              <span className="font-bold text-sm">۴۰٪ تخفیف + ۷ روز رایگان!</span>
-            </div>
-            <p className="text-xs opacity-90">
-              همین الان اشتراک بگیر و آموزش اسکیت رو شروع کن
-            </p>
-          </div>
-        </Link>
-      )}
 
       {/* Courses */}
       <section>
